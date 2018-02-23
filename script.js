@@ -15,7 +15,7 @@ window.addEventListener("resize", fitToScreen);
 startup();
 
 //cam position
-var cam = {x: 0, y: -5, z: 0, yaw: 0, pitch: 0, roll: 0, fov: 60};
+var cam = {x: 0, y: -10, z: 0, yaw: 0, pitch: 0, roll: 0, fov: 70};
 //sensitivity of mouse movement
 var sens = 10;
 
