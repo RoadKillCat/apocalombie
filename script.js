@@ -110,7 +110,7 @@ function mc(){
     for (var i = 0; i < zombies.length; i++){
         if (in_scope(zombies[i])){
             zombies.splice(i, 1);
-            var ra = Math.random() * Math.PI * 0.1;
+            var ra = Math.random() * Math.PI * 0.3;
             zombies.push(zomb.map(f=>({
             verts: f.verts.map(translate(0, 10, 0))
                           .map(zAxisRotate(ra)),
