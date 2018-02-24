@@ -99,6 +99,7 @@ document.addEventListener("pointerlockchange", function(){
     if (document.pointerLockElement == cnvs){
         document.addEventListener("mousemove", mm);
         document.addEventListener("click", mc);
+        update();
     } else {
         document.removeEventListener("mousemove", mm);
         document.removeEventListener("mouseclick", mc);
