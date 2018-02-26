@@ -17,11 +17,25 @@ startup();
 //cam position
 var cam = {x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0, fov: 70};
 //sensitivity of mouse movement
-var sens = 2;
+var sens = 8;
+//speed, units per second
+var spd = 10;
 
+//jump
+var jump_height = 3;
+var jump_spd =  8;    //units per second
+var jump_peak = 0;
+var jump_dir = 1;
+
+//frames per second
+var fps = 60;
 
 var zomb = [
+//torso
 {verts: [{x: -0.5, y: 0, z: 0}, {x: -0.5, y: 0, z: 1.7}, {x: 0.5, y: 0, z: 1.7}, {x: 0.5, y: 0, z: 0}], col: "#43e"},
+{verts: [{x: -0.5, y: 0, z: 0}, {x: -0.5, y: 0, z: 1.7}, {x: 0, y: -0.2, z: 1.7}, {x: 0, y: -0.2, z: 0}], col: "#4e3"},
+{verts: [{x: 0.5, y: 0, z: 0}, {x: 0.5, y: 0, z: 1.7}, {x: 0, y: -0.2, z: 1.7}, {x: 0, y: -0.2, z: 0}], col: "#4e3"},
+//head
 {verts: [{x: 0, y: 0, z: 1.7}, {x: -0.4, y: 0, z: 2.392}, {x: 0.4, y: 0, z: 2.392}], col: "#d43"}
 ]
 
@@ -36,51 +50,10 @@ for (var i = 0; i < no_zombs; i++){
     })));
 }
 
-function in_polygon(p, poly){
-    //bounding box quick check
-    var min_x = poly[0].x;
-    var max_x = poly[0].x;
-    var min_y = poly[0].y;
-    var max_y = poly[0].y;
-    for (var i = 1; i < poly.length; i++){
-        min_x = Math.min(min_x, poly[i].x);
-        max_x = Math.max(max_x, poly[i].x);
-        min_y = Math.min(min_y, poly[i].y);
-        max_y = Math.max(max_y, poly[i].y);
-    }
-    if (p.x < min_x || p.x > max_x || p.y < min_y || p.y > max_y) return false;
-    //if passed bounding box, try ray casting
-    var inside = false;
-    for (var i = 0; i < poly.length; i++){
-        var j = i < poly.length - 1 ? i + 1 : 0;
-        //check if crosses line and if that cross is to the right of the point
-        if ((poly[i].y < p.y && poly[j].y > p.y || poly[i].y > p.y && poly[j].y < p.y) &&
-            p.x < ((p.y - poly[i].y) * (poly[j].x - poly[i].x)) / (poly[j].y - poly[i].y) + poly[i].x){
-            console.log("edge between:", poly[i], poly[j]);
-            inside = !inside;
-        }
-    }
-    return inside;
-}
 
-function in_scope(zomb){
-    var faces = zomb.map(f => f.verts);
-    for (var f = 0; f < faces.length; f++){
-        var aligned = faces[f]
-        .map(translate(-cam.x, -cam.y, -cam.z))
-        .map(zAxisRotate(toRad(cam.yaw)))
-        .map(yAxisRotate(toRad(cam.roll)))
-        .map(xAxisRotate(toRad(cam.pitch)))
-        .map(translate(cam.x,cam.y,cam.z));
-
-        var face2d = aligned.map(c => (
-        {x: toDeg(Math.atan2(c.x - cam.x, c.y - cam.y)),
-         y: toDeg(Math.atan2(c.z - cam.z, c.y - cam.y))
-        }));
-        
-        if (in_polygon({x: 0, y: 0}, face2d)) return true;
-    }
-    return false;
+function update(){
+    render(construct_world(zombies), cam, cnvs, false);
+    circle(cnvs.width / 2, cnvs.height / 2, 10);
 }
 
 function construct_world(parts){
@@ -92,6 +65,74 @@ function construct_world(parts){
     }
     return world;
 }
+
+setInterval(function(){
+    if (cam.z == 0) return;
+    var fut_pos = cam.z + jump_dir * (jump_spd / fps);
+    if (fut_pos < 0){
+        cam.z = 0;
+    } else if (fut_pos > jump_peak){
+        cam.z = jump_peak;
+        jump_dir = -1;
+    } else {
+        cam.z = fut_pos;
+    }
+    update();
+}, 1000 / fps);
+
+function jump(){
+    //going up
+    jump_dir = 1;
+    //set goal (allows double [etc.] jumps)
+    jump_peak = cam.z + jump_height;
+    //init. jump
+    cam.z += jump_spd / fps;
+}
+        
+
+
+/**********************************
+        EVENT LISTENERS
+**********************************/
+
+/*** KEYBOARD EVENTS ***/
+
+
+document.addEventListener("keypress", kd);
+document.addEventListener("keyup", ku);
+
+var key_ids = {};
+
+function kd(e){
+    var k = e.key;
+    var wasd = {'w': 0, 'a': -90, 's': 180, 'd': 90};
+    if (wasd.hasOwnProperty(k) && !key_ids.hasOwnProperty(k)){
+        var stp = function(){
+            step(wasd[k]); 
+            update();
+        };
+        stp();
+        key_ids[k] = setInterval(stp, 1000 / fps);
+    } else if (k == ' '){
+        jump();
+    }
+}
+
+function ku(e){
+    var k = e.key;
+    if ('wasd'.includes(k)){
+        clearInterval(key_ids[k]);
+        delete key_ids[k];1
+    }
+}
+
+function step(angle){
+    var stride = spd / fps;
+    cam.x += Math.sin(toRad(cam.yaw + angle)) * stride;
+    cam.y += Math.cos(toRad(cam.yaw + angle)) * stride;
+}
+
+/***  MOUSE EVENTS ***/
 
 cnvs.onclick = () => cnvs.requestPointerLock();
 
@@ -120,16 +161,15 @@ function mc(){
     update();
 }
 
-function update(){
-    render(construct_world(zombies), cam, cnvs, false);
-    circle(cnvs.width / 2, cnvs.height / 2, 10); 
-}
-
 function mm(e){
     cam.yaw += e.movementX / sens;
     cam.pitch -= e.movementY / sens;
     update();
 }
+
+/********************************
+       OTHER FUNCTIONS
+********************************/
 
 function startup(){
     ctx.fillStyle = "white";
@@ -145,3 +185,48 @@ function circle(x, y, r){
     ctx.fill();
 }
 
+function in_polygon(p, poly){
+    //bounding box quick check
+    var min_x = poly[0].x;
+    var max_x = poly[0].x;
+    var min_y = poly[0].y;
+    var max_y = poly[0].y;
+    for (var i = 1; i < poly.length; i++){
+        min_x = Math.min(min_x, poly[i].x);
+        max_x = Math.max(max_x, poly[i].x);
+        min_y = Math.min(min_y, poly[i].y);
+        max_y = Math.max(max_y, poly[i].y);
+    }
+    if (p.x < min_x || p.x > max_x || p.y < min_y || p.y > max_y) return false;
+    //if passed bounding box, try ray casting
+    var inside = false;
+    for (var i = 0; i < poly.length; i++){
+        var j = i < poly.length - 1 ? i + 1 : 0;
+        //check if crosses line and if that cross is to the right of the point
+        if ((poly[i].y < p.y && poly[j].y > p.y || poly[i].y > p.y && poly[j].y < p.y) &&
+            p.x < ((p.y - poly[i].y) * (poly[j].x - poly[i].x)) / (poly[j].y - poly[i].y) + poly[i].x){
+            inside = !inside;
+        }
+    }
+    return inside;
+}
+
+function in_scope(zomb){
+    var faces = zomb.map(f => f.verts);
+    for (var f = 0; f < faces.length; f++){
+        var aligned = faces[f]
+        .map(translate(-cam.x, -cam.y, -cam.z))
+        .map(zAxisRotate(toRad(cam.yaw)))
+        .map(yAxisRotate(toRad(cam.roll)))
+        .map(xAxisRotate(toRad(cam.pitch)))
+        .map(translate(cam.x,cam.y,cam.z));
+
+        var face2d = aligned.map(c => (
+        {x: toDeg(Math.atan2(c.x - cam.x, c.y - cam.y)),
+         y: toDeg(Math.atan2(c.z - cam.z, c.y - cam.y))
+        }));
+        
+        if (in_polygon({x: 0, y: 0}, face2d)) return true;
+    }
+    return false;
+}

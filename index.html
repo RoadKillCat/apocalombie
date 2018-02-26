@@ -2,17 +2,34 @@
 <head>
 <script src="thirdEngine.js"></script>
 <style>
+
 html, body {
     margin: 0;
     padding: 0;
 }
 
 #cnvs {
+    position: fixed;
+    float: top;
+    z-index: 0;
     background-color: black;
 }
+
+#mcnvs {
+    z-index: 1;
+    pointer-events: none;
+    position: fixed;
+    right: 0;
+}
+
 </style>
+
 </head>
+
 <body>
+
 <canvas id="cnvs"></canvas>
+<canvas id="mcnvs"></canvas>
+
 <script src="script.js"></script>
 </body>
