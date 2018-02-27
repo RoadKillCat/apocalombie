@@ -14,8 +14,21 @@ window.addEventListener("resize", fitToScreen);
 
 startup();
 
+
+/* GENERAL */
+
 //cam position
 var cam = {x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0, fov: 70};
+//frames per second
+var fps = 60;
+
+/* SETTINGS */
+
+var wireframe = false;
+
+
+/* PLAYER */
+
 //sensitivity of mouse movement
 var sens = 8;
 //speed, units per second
@@ -24,19 +37,62 @@ var spd = 10;
 //jump
 var jump_height = 3;
 var jump_spd =  8;    //units per second
-var jump_peak = 0;
-var jump_dir = 1;
+var jumping = false;
 
-//frames per second
-var fps = 60;
+/* ZOMBIE */
+
+/*
+key:
+ - xh : x's height
+ - xw : x's width
+ - xt : x's thickness
+ - hn : nose height
+*/
+
+//head
+var hh = 0.7;
+var hw = 0.7;
+var ht = 0.8;
+var hn = 0.4;
+
+//torso
+var th = 1.7;
+var tw = 1;
+var tt = 0.3;
+
+//legs
+var lh = 2;
+var lw = 0.4;
 
 var zomb = [
-//torso
-{verts: [{x: -0.5, y: 0, z: 0}, {x: -0.5, y: 0, z: 1.7}, {x: 0.5, y: 0, z: 1.7}, {x: 0.5, y: 0, z: 0}], col: "#43e"},
-{verts: [{x: -0.5, y: 0, z: 0}, {x: -0.5, y: 0, z: 1.7}, {x: 0, y: -0.2, z: 1.7}, {x: 0, y: -0.2, z: 0}], col: "#4e3"},
-{verts: [{x: 0.5, y: 0, z: 0}, {x: 0.5, y: 0, z: 1.7}, {x: 0, y: -0.2, z: 1.7}, {x: 0, y: -0.2, z: 0}], col: "#4e3"},
 //head
-{verts: [{x: 0, y: 0, z: 1.7}, {x: -0.4, y: 0, z: 2.392}, {x: 0.4, y: 0, z: 2.392}], col: "#d43"}
+{verts: [{x: 0, y: 0,  z: lh+th   }, {x: -hw/2, y: 0,  z: lh+th+hh}, {x: hw/2, y: 0,  z: lh+th+hh}], col: "#d43"},
+{verts: [{x: 0, y: 0,  z: lh+th   }, {x: 0,     y: ht, z: lh+th+hn}, {x: hw/2, y: 0,  z: lh+th+hh}], col: "#d43"},
+{verts: [{x: 0, y: 0,  z: lh+th   }, {x: -hw/2, y: 0,  z: lh+th+hh}, {x: 0,    y: ht, z: lh+th+hn}], col: "#d43"},
+{verts: [{x: 0, y: ht, z: lh+th+hn}, {x: -hw/2, y: 0,  z: lh+th+hh}, {x: hw/2, y: 0,  z: lh+th+hh}], col: "#d43"},
+//torso
+{verts: [{x: -tw/2, y: 0,  z: lh   }, {x: -tw/2, y: 0,  z: lh+th}, {x:  tw/2, y: 0,  z: lh+th}, {x:  tw/2, y: 0,  z: lh   }], col: "#43e"},
+{verts: [{x:  tw/2, y: tt, z: lh   }, {x:  tw/2, y: tt, z: lh+th}, {x:  tw/2, y: 0,  z: lh+th}, {x:  tw/2, y: 0,  z: lh   }], col: "#43e"},
+{verts: [{x: -tw/2, y: 0,  z: lh   }, {x: -tw/2, y: 0,  z: lh+th}, {x: -tw/2, y: tt, z: lh+th}, {x: -tw/2, y: tt, z: lh   }], col: "#43e"},
+{verts: [{x: -tw/2, y: tt, z: lh   }, {x: -tw/2, y: tt, z: lh+th}, {x:  tw/2, y: tt, z: lh+th}, {x:  tw/2, y: tt, z: lh   }], col: "#43e"},
+{verts: [{x: -tw/2, y: 0,  z: lh+th}, {x: -tw/2, y: tt, z: lh+th}, {x:  tw/2, y: tt, z: lh+th}, {x:  tw/2, y: 0,  z: lh+th}], col: "#43e"},
+{verts: [{x: -tw/2, y: 0,  z: lh   }, {x: -tw/2, y: tt, z: lh   }, {x:  tw/2, y: tt, z: lh   }, {x:  tw/2, y: 0,  z: lh   }], col: "#43e"},
+//legs
+{verts: [{x: -tw/2,    y: 0,  z: lh}, {x: -tw/2,    y: tt, z: lh}, {x:  -tw/2+lw, y: tt, z: lh}, {x: -tw/2+lw, y: 0, z: lh}], col: "#43e"},
+{verts: [{x: -tw/2,    y: 0,  z: lh}, {x: -tw/2,    y: tt, z: lh}, {x: -tw/2, y: tt/2, z: 0}], col: "#43e"},
+{verts: [{x: -tw/2,    y: tt, z: lh}, {x: -tw/2+lw, y: tt, z: lh}, {x: -tw/2, y: tt/2, z: 0}], col: "#43e"},
+{verts: [{x: -tw/2+lw, y: tt, z: lh}, {x: -tw/2+lw, y: 0,  z: lh}, {x: -tw/2, y: tt/2, z: 0}], col: "#43e"},
+{verts: [{x: -tw/2,    y: 0,  z: lh}, {x: -tw/2+lw, y: 0,  z: lh}, {x: -tw/2, y: tt/2, z: 0}], col: "#43e"},
+//////
+{verts: [{x: tw/2,    y: 0,  z: lh}, {x: tw/2,    y: tt, z: lh}, {x: tw/2-lw, y: tt, z: lh},  {x: tw/2-lw, y: 0,  z: lh}], col: "#43e"},
+{verts: [{x: tw/2,    y: 0,  z: lh}, {x: tw/2,    y: tt, z: lh}, {x: tw/2, y: tt/2, z: 0}], col: "#43e"},
+{verts: [{x: tw/2,    y: tt, z: lh}, {x: tw/2-lw, y: tt, z: lh}, {x: tw/2, y: tt/2, z: 0}], col: "#43e"},
+{verts: [{x: tw/2-lw, y: tt, z: lh}, {x: tw/2-lw, y: 0,  z: lh}, {x: tw/2, y: tt/2, z: 0}], col: "#43e"},
+{verts: [{x: tw/2,    y: 0,  z: lh}, {x: tw/2-lw, y: 0,  z: lh}, {x: tw/2, y: tt/2, z: 0}], col: "#43e"},
+
+
+//{verts: [{x:  tw/2, y: 0,  z: 0},  {x:  tw/2, y: tt, z: 0},  {x:   tw/2-lw, y: tt, z: 0},  {x:  tw/2-lw, y: 0,  z: 0 }], col: "#43e"},
+
 ]
 
 var no_zombs = 1;
@@ -52,7 +108,7 @@ for (var i = 0; i < no_zombs; i++){
 
 
 function update(){
-    render(construct_world(zombies), cam, cnvs, false);
+    render(construct_world(zombies), cam, cnvs, wireframe);
     circle(cnvs.width / 2, cnvs.height / 2, 10);
 }
 
@@ -66,27 +122,37 @@ function construct_world(parts){
     return world;
 }
 
-setInterval(function(){
-    if (cam.z == 0) return;
-    var fut_pos = cam.z + jump_dir * (jump_spd / fps);
-    if (fut_pos < 0){
-        cam.z = 0;
-    } else if (fut_pos > jump_peak){
-        cam.z = jump_peak;
-        jump_dir = -1;
-    } else {
-        cam.z = fut_pos;
-    }
-    update();
-}, 1000 / fps);
-
 function jump(){
+    if (jumping) return;
     //going up
-    jump_dir = 1;
-    //set goal (allows double [etc.] jumps)
-    jump_peak = cam.z + jump_height;
-    //init. jump
-    cam.z += jump_spd / fps;
+    var jump_dir = 1;
+    //set goal
+    var jump_peak = cam.z + jump_height;
+    //store resting height
+    var jump_rest = cam.z;
+    //jump interval
+    var ji = jump_spd / fps;
+    var u = function(){
+        if (jump_dir == 1){
+            if (cam.z > jump_peak){
+                cam.z = jump_peak;
+                jump_dir = -1;
+            } else {
+                cam.z += ji
+            }
+        } else {
+            cam.z -= ji;
+        }
+        if (cam.z - ji >= jump_rest){
+            setTimeout(u, 1000 / fps);
+        } else {
+            cam.z = jump_rest;
+            jumping = false;
+        }
+        update();
+    }
+    jumping = true;
+    u();
 }
         
 
@@ -101,11 +167,13 @@ function jump(){
 document.addEventListener("keypress", kd);
 document.addEventListener("keyup", ku);
 
+//IDs for the setIntervals running on held keys
 var key_ids = {};
 
 function kd(e){
     var k = e.key;
     var wasd = {'w': 0, 'a': -90, 's': 180, 'd': 90};
+    //if key is in 'wasd' and is not already being pressed
     if (wasd.hasOwnProperty(k) && !key_ids.hasOwnProperty(k)){
         var stp = function(){
             step(wasd[k]); 
@@ -115,6 +183,13 @@ function kd(e){
         key_ids[k] = setInterval(stp, 1000 / fps);
     } else if (k == ' '){
         jump();
+    } else if ('zx'.includes(k)){
+        console.log('zx')
+        cam.z += 0.5 * (k == 'z' ? 1 : -1);
+        update();
+    } else if (k == 'f') {
+        wireframe = !wireframe;
+        update();
     }
 }
 
@@ -173,9 +248,9 @@ function mm(e){
 
 function startup(){
     ctx.fillStyle = "white";
-    ctx.font = "50px monospace";
+    ctx.font = "20px monospace";
     ctx.textAlign = "center";
-    ctx.fillText("click to start", cnvs.width / 2, cnvs.height / 2);
+    ctx.fillText("click to start wasd move, zx lower up and down, space single jump, f wireframe", cnvs.width / 2, cnvs.height / 2);
 }
 
 function circle(x, y, r){
