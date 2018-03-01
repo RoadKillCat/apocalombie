@@ -4,21 +4,12 @@
 var cnvs = document.getElementById("cnvs");
 var ctx = cnvs.getContext("2d");
 
-//resizing boilerplate
-function fitToScreen(){
-    cnvs.width = innerWidth;
-    cnvs.height = innerHeight;
-}
-fitToScreen();
-window.addEventListener("resize", fitToScreen);
-
-startup();
-
+/*** VARIABLES ***/
 
 /* GENERAL */
 
 //cam position
-var cam = {x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0, fov: 70};
+var cam = {x: 0, y: 0, z: 3.5, yaw: 0, pitch: 0, roll: 0, fov: 50};
 //frames per second
 var fps = 60;
 
@@ -46,80 +37,112 @@ key:
  - xh : x's height
  - xw : x's width
  - xt : x's thickness
+ - xc : x's colour
  - hn : nose height
 */
 
 //head
-var hh = 0.7;
-var hw = 0.7;
+var hh = 0.4;
+var hw = 0.5;
 var ht = 0.8;
-var hn = 0.4;
+var hn = 0.15;
+var hcb = "#e30";
+var hcs = "#f41";
 
 //torso
 var th = 1.7;
 var tw = 1;
 var tt = 0.3;
+var tcf = "#d98";
+var tcb = "#c65";
+var tcs = "#c54";
 
 //legs
 var lh = 2;
 var lw = 0.4;
+var lco = "#c54";
+var lci = "#a32";
+
+//arms
+var al = 1.5;
+var ah = 0.3;
+var aw = 0.25;
+var aco = "#d76";
+var aci = "#a32";
 
 var zomb = [
 //head
-{verts: [{x: 0, y: 0,  z: lh+th   }, {x: -hw/2, y: 0,  z: lh+th+hh}, {x: hw/2, y: 0,  z: lh+th+hh}], col: "#d43"},
-{verts: [{x: 0, y: 0,  z: lh+th   }, {x: 0,     y: ht, z: lh+th+hn}, {x: hw/2, y: 0,  z: lh+th+hh}], col: "#d43"},
-{verts: [{x: 0, y: 0,  z: lh+th   }, {x: -hw/2, y: 0,  z: lh+th+hh}, {x: 0,    y: ht, z: lh+th+hn}], col: "#d43"},
-{verts: [{x: 0, y: ht, z: lh+th+hn}, {x: -hw/2, y: 0,  z: lh+th+hh}, {x: hw/2, y: 0,  z: lh+th+hh}], col: "#d43"},
+{verts: [{x: 0,    y: 0, z: lh+th   }, {x: -hw/2, y: 0, z: lh+th+hh}, {x: hw/2, y: 0,  z: lh+th+hh}], col: hcb},
+{verts: [{x: 0,    y: 0, z: lh+th   }, {x:  hw/2, y: 0, z: lh+th+hh}, {x: 0,    y: ht, z: lh+th+hn}], col: hcs},
+{verts: [{x: 0,    y: 0, z: lh+th   }, {x: -hw/2, y: 0, z: lh+th+hh}, {x: 0,    y: ht, z: lh+th+hn}], col: hcs},
+{verts: [{x: hw/2, y: 0, z: lh+th+hh}, {x: -hw/2, y: 0, z: lh+th+hh}, {x: 0,    y: ht, z: lh+th+hn}], col: hcs}, 
 //torso
-{verts: [{x: -tw/2, y: 0,  z: lh   }, {x: -tw/2, y: 0,  z: lh+th}, {x:  tw/2, y: 0,  z: lh+th}, {x:  tw/2, y: 0,  z: lh   }], col: "#43e"},
-{verts: [{x:  tw/2, y: tt, z: lh   }, {x:  tw/2, y: tt, z: lh+th}, {x:  tw/2, y: 0,  z: lh+th}, {x:  tw/2, y: 0,  z: lh   }], col: "#43e"},
-{verts: [{x: -tw/2, y: 0,  z: lh   }, {x: -tw/2, y: 0,  z: lh+th}, {x: -tw/2, y: tt, z: lh+th}, {x: -tw/2, y: tt, z: lh   }], col: "#43e"},
-{verts: [{x: -tw/2, y: tt, z: lh   }, {x: -tw/2, y: tt, z: lh+th}, {x:  tw/2, y: tt, z: lh+th}, {x:  tw/2, y: tt, z: lh   }], col: "#43e"},
-{verts: [{x: -tw/2, y: 0,  z: lh+th}, {x: -tw/2, y: tt, z: lh+th}, {x:  tw/2, y: tt, z: lh+th}, {x:  tw/2, y: 0,  z: lh+th}], col: "#43e"},
-{verts: [{x: -tw/2, y: 0,  z: lh   }, {x: -tw/2, y: tt, z: lh   }, {x:  tw/2, y: tt, z: lh   }, {x:  tw/2, y: 0,  z: lh   }], col: "#43e"},
+{verts: [{x: -tw/2, y: 0,  z: lh   }, {x: -tw/2, y: 0,  z: lh+th}, {x:  tw/2, y: 0,  z: lh+th}, {x:  tw/2, y: 0,  z: lh   }], col: tcb},
+{verts: [{x:  tw/2, y: tt, z: lh   }, {x:  tw/2, y: tt, z: lh+th}, {x:  tw/2, y: 0,  z: lh+th}, {x:  tw/2, y: 0,  z: lh   }], col: tcs},
+{verts: [{x: -tw/2, y: 0,  z: lh   }, {x: -tw/2, y: 0,  z: lh+th}, {x: -tw/2, y: tt, z: lh+th}, {x: -tw/2, y: tt, z: lh   }], col: tcs},
+{verts: [{x: -tw/2, y: tt, z: lh   }, {x: -tw/2, y: tt, z: lh+th}, {x:  tw/2, y: tt, z: lh+th}, {x:  tw/2, y: tt, z: lh   }], col: tcf},
+{verts: [{x: -tw/2, y: 0,  z: lh+th}, {x: -tw/2, y: tt, z: lh+th}, {x:  tw/2, y: tt, z: lh+th}, {x:  tw/2, y: 0,  z: lh+th}], col: tcs},
+{verts: [{x: -tw/2, y: 0,  z: lh   }, {x: -tw/2, y: tt, z: lh   }, {x:  tw/2, y: tt, z: lh   }, {x:  tw/2, y: 0,  z: lh   }], col: tcs},
 //legs
-{verts: [{x: -tw/2,    y: 0,  z: lh}, {x: -tw/2,    y: tt, z: lh}, {x:  -tw/2+lw, y: tt, z: lh}, {x: -tw/2+lw, y: 0, z: lh}], col: "#43e"},
-{verts: [{x: -tw/2,    y: 0,  z: lh}, {x: -tw/2,    y: tt, z: lh}, {x: -tw/2, y: tt/2, z: 0}], col: "#43e"},
-{verts: [{x: -tw/2,    y: tt, z: lh}, {x: -tw/2+lw, y: tt, z: lh}, {x: -tw/2, y: tt/2, z: 0}], col: "#43e"},
-{verts: [{x: -tw/2+lw, y: tt, z: lh}, {x: -tw/2+lw, y: 0,  z: lh}, {x: -tw/2, y: tt/2, z: 0}], col: "#43e"},
-{verts: [{x: -tw/2,    y: 0,  z: lh}, {x: -tw/2+lw, y: 0,  z: lh}, {x: -tw/2, y: tt/2, z: 0}], col: "#43e"},
+{verts: [{x: -tw/2, y: 0,  z: lh}, {x: -tw/2,    y: tt,   z: lh}, {x: -tw/2, y: tt/2, z: lh}], col: lco},
+{verts: [{x: -tw/2, y: 0,  z: lh}, {x: -tw/2,    y: tt,   z: lh}, {x: -tw/2, y: tt/2, z: 0 }], col: lco},
+{verts: [{x: -tw/2, y: tt, z: lh}, {x: -tw/2+lw, y: tt/2, z: lh}, {x: -tw/2, y: tt/2, z: 0 }], col: lci},
+{verts: [{x: -tw/2, y: 0,  z: lh}, {x: -tw/2+lw, y: tt/2, z: lh}, {x: -tw/2, y: tt/2, z: 0 }], col: lci},
 //////
-{verts: [{x: tw/2,    y: 0,  z: lh}, {x: tw/2,    y: tt, z: lh}, {x: tw/2-lw, y: tt, z: lh},  {x: tw/2-lw, y: 0,  z: lh}], col: "#43e"},
-{verts: [{x: tw/2,    y: 0,  z: lh}, {x: tw/2,    y: tt, z: lh}, {x: tw/2, y: tt/2, z: 0}], col: "#43e"},
-{verts: [{x: tw/2,    y: tt, z: lh}, {x: tw/2-lw, y: tt, z: lh}, {x: tw/2, y: tt/2, z: 0}], col: "#43e"},
-{verts: [{x: tw/2-lw, y: tt, z: lh}, {x: tw/2-lw, y: 0,  z: lh}, {x: tw/2, y: tt/2, z: 0}], col: "#43e"},
-{verts: [{x: tw/2,    y: 0,  z: lh}, {x: tw/2-lw, y: 0,  z: lh}, {x: tw/2, y: tt/2, z: 0}], col: "#43e"},
-
-
-//{verts: [{x:  tw/2, y: 0,  z: 0},  {x:  tw/2, y: tt, z: 0},  {x:   tw/2-lw, y: tt, z: 0},  {x:  tw/2-lw, y: 0,  z: 0 }], col: "#43e"},
-
+{verts: [{x:  tw/2, y: 0,  z: lh}, {x:  tw/2,    y: tt,   z: lh}, {x: tw/2-lw, y: tt/2, z: lh}], col: lco},
+{verts: [{x:  tw/2, y: 0,  z: lh}, {x:  tw/2,    y: tt,   z: lh}, {x: tw/2,    y: tt/2, z: 0 }], col: lco},
+{verts: [{x:  tw/2, y: tt, z: lh}, {x:  tw/2-lw, y: tt/2, z: lh}, {x: tw/2,    y: tt/2, z: 0 }], col: lci},
+{verts: [{x:  tw/2, y: 0,  z: lh}, {x:  tw/2-lw, y: tt/2, z: lh}, {x: tw/2,    y: tt/2, z: 0 }], col: lci},
+//arms
+{verts: [{x: -tw/2, y: 0,  z: lh+th},      {x: -tw/2, y: 0,  z: lh+th-ah},   {x: -tw/2-aw, y: 0,  z: lh+th-ah/2}], col: aco},  
+{verts: [{x: -tw/2, y: 0,  z: lh+th},      {x: -tw/2, y: 0,  z: lh+th-ah},   {x: -tw/2,    y: al, z: lh+th-ah/2}], col: aci},  
+{verts: [{x: -tw/2, y: 0,  z: lh+th},      {x: -tw/2, y: al, z: lh+th-ah/2}, {x: -tw/2-aw, y: 0,  z: lh+th-ah/2}], col: aco},  
+{verts: [{x: -tw/2, y: al, z: lh+th-ah/2}, {x: -tw/2, y: 0,  z: lh+th-ah},   {x: -tw/2-aw, y: 0,  z: lh+th-ah/2}], col: aco},  
+//////
+{verts: [{x:  tw/2, y: 0,  z: lh+th},      {x:  tw/2, y: 0,  z: lh+th-ah},   {x:  tw/2+aw, y: 0,  z: lh+th-ah/2}], col: aco},  
+{verts: [{x:  tw/2, y: 0,  z: lh+th},      {x:  tw/2, y: 0,  z: lh+th-ah},   {x:  tw/2,    y: al, z: lh+th-ah/2}], col: aci},  
+{verts: [{x:  tw/2, y: 0,  z: lh+th},      {x:  tw/2, y: al, z: lh+th-ah/2}, {x:  tw/2+aw, y: 0,  z: lh+th-ah/2}], col: aco},  
+{verts: [{x:  tw/2, y: al, z: lh+th-ah/2}, {x:  tw/2, y: 0,  z: lh+th-ah},   {x:  tw/2+aw, y: 0,  z: lh+th-ah/2}], col: aco},  
 ]
 
 var no_zombs = 1;
 
 var zombies = [];
 
-for (var i = 0; i < no_zombs; i++){
-    zombies.push(zomb.map(f=>({
-        verts: f.verts.map(translate(0, 10, 0)),
-        col: f.col
-    })));
+function new_zomb(){
+    zombies.push({
+        x: 0,
+        y: 10,
+        z: 0,
+        yaw: 0
+    })
 }
+
+new_zomb();
+
+
+/*** STARTING FUNCTIONS ***/
+
+//scale canvas to screen size
+fts();
+//display start up screen
+startup();
 
 
 function update(){
-    render(construct_world(zombies), cam, cnvs, wireframe);
+    render(construct_world(), cam, cnvs, wireframe);
     circle(cnvs.width / 2, cnvs.height / 2, 10);
 }
 
-function construct_world(parts){
-    var world = [];
-    for (var i = 0; i < parts.length; i++){
-        for (var f = 0; f < parts[i].length; f++){
-            world.push(parts[i][f]);
-        }
+function construct_world(){
+    var faces = [];
+    for (var i = 0; i < zombies.length; i++){
+        var z = zombies[i];
+        faces = faces.concat(zomb.map(f => ({verts: f.verts.map(zAxisRotate(z.yaw))
+                                                           .map(translate(z.x, z.y, z.z)),
+                                             col: f.col})));
     }
-    return world;
+    return faces;
 }
 
 function jump(){
@@ -160,6 +183,13 @@ function jump(){
 /**********************************
         EVENT LISTENERS
 **********************************/
+
+/*** BASIC SCREEN RESIZE ***/
+
+window.addEventListener("resize", function(){
+    fts();
+    update();
+});
 
 /*** KEYBOARD EVENTS ***/
 
@@ -224,22 +254,25 @@ document.addEventListener("pointerlockchange", function(){
 
 function mc(){
     for (var i = 0; i < zombies.length; i++){
-        if (in_scope(zombies[i])){
+        var z = zombies[i];
+        var r = zomb.map(f => ({verts: f.verts.map(zAxisRotate(z.yaw)).map(translate(z.x, z.y, z.z)), col: f.col}));
+        if (in_scope(r)){
             zombies.splice(i, 1);
-            var ra = Math.random() * Math.PI * 0.3;
-            zombies.push(zomb.map(f=>({
-            verts: f.verts.map(translate(0, 10, 0))
-                          .map(zAxisRotate(ra)),
-            col: f.col})));
+            zombies.push({
+                x: Math.random() * 10,
+                y: Math.random() * 10,
+                z: 0,
+                yaw: 0
+            });
         }
     }
     update();
 }
+setInterval(update, 10);
 
 function mm(e){
     cam.yaw += e.movementX / sens;
     cam.pitch -= e.movementY / sens;
-    update();
 }
 
 /********************************
@@ -286,8 +319,8 @@ function in_polygon(p, poly){
     return inside;
 }
 
-function in_scope(zomb){
-    var faces = zomb.map(f => f.verts);
+function in_scope(obj){
+    var faces = obj.map(f => f.verts);
     for (var f = 0; f < faces.length; f++){
         var aligned = faces[f]
         .map(translate(-cam.x, -cam.y, -cam.z))
@@ -304,4 +337,10 @@ function in_scope(zomb){
         if (in_polygon({x: 0, y: 0}, face2d)) return true;
     }
     return false;
+}
+
+//fit to screen
+function fts(){
+    cnvs.width = innerWidth;
+    cnvs.height = innerHeight;
 }
