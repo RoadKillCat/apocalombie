@@ -268,11 +268,11 @@ function mc(){
     }
     update();
 }
-setInterval(update, 10);
 
 function mm(e){
     cam.yaw += e.movementX / sens;
     cam.pitch -= e.movementY / sens;
+    update();
 }
 
 /********************************
