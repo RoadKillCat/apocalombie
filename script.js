@@ -27,7 +27,7 @@ var wireframe = false;
 //sensitivity of mouse movement
 var sens = 8;
 //speed, units per second
-var spd = 4;
+var spd = 16;
 
 //jump
 var jump_height = 3;
@@ -249,7 +249,7 @@ function ku(e){
 
 function step(angle){
     //step distance
-    var sd= spd / fps * time_diff_s;
+    var sd= spd * time_diff_s;
     cam.x += Math.sin(zengine.to_rad(cam.yaw + angle)) * sd;
     cam.y += Math.cos(zengine.to_rad(cam.yaw + angle)) * sd;
 }
@@ -288,7 +288,6 @@ function mc(){
 function mm(e){
     cam.yaw += e.movementX / sens;
     cam.pitch -= e.movementY / sens;
-    update();
 }
 
 /********************************
