@@ -10,8 +10,12 @@ var ctx = cnvs.getContext("2d");
 
 //cam position
 var cam = {x: 0, y: 0, z: 3.5, yaw: 0, pitch: 0, roll: 0, fov: 50};
-//frames per second
-var fps = 60;
+//time, in microseconds, of last animation frame
+var time_last_ms;
+//time difference, in seconds, from last anim. frame
+var time_diff_s;
+//set of keys currently being pressed
+var pressed_keys = new Set();
 
 /* SETTINGS */
 
@@ -23,12 +27,16 @@ var wireframe = false;
 //sensitivity of mouse movement
 var sens = 8;
 //speed, units per second
-var spd = 10;
+var spd = 4;
 
 //jump
 var jump_height = 3;
 var jump_spd =  8;    //units per second
 var jumping = false;
+var jump_dir;
+var jump_rest;
+var jump_peak;
+
 
 /* ZOMBIE */
 
@@ -129,56 +137,86 @@ fts();
 startup();
 
 
-function update(){
-    render(construct_world(), cam, cnvs, wireframe);
+function update(time){
+    time_diff_s  = time_last_ms ? (time - time_last_ms) / 1000 : 0;
+    time_last_ms = time;
+
+    handle_keys();
+    incr_jump();
+    zengine.render(construct_world(), cam, cnvs, wireframe);
     circle(cnvs.width / 2, cnvs.height / 2, 10);
+
+    requestAnimationFrame(update);
+}
+
+function handle_keys(tds){
+    for (var k of pressed_keys){
+        switch (k){
+            case 'w':
+                step(0);
+                break;
+            case 'a':
+                step(-90);
+                break;
+            case 's':
+                step(180);
+                break;
+            case 'd':
+                step(90);
+                break;
+            case ' ':
+                if (!jumping) jump();
+                break;
+            case 'f':
+                wireframe = !wireframe;
+                break;
+            case 'z':
+                cam.z += 0.5;
+                break;
+            case 'x':
+                cam.z -= 0.5;
+                break;
+        }
+    }
 }
 
 function construct_world(){
     var faces = [];
     for (var i = 0; i < zombies.length; i++){
         var z = zombies[i];
-        faces = faces.concat(zomb.map(f => ({verts: f.verts.map(zAxisRotate(z.yaw))
-                                                           .map(translate(z.x, z.y, z.z)),
+        faces = faces.concat(zomb.map(f => ({verts: f.verts.map(zengine.z_axis_rotate(z.yaw))
+                                                           .map(zengine.translate(z.x, z.y, z.z)),
                                              col: f.col})));
     }
     return faces;
 }
 
-function jump(){
-    if (jumping) return;
-    //going up
-    var jump_dir = 1;
-    //set goal
-    var jump_peak = cam.z + jump_height;
-    //store resting height
-    var jump_rest = cam.z;
-    //jump interval
-    var ji = jump_spd / fps;
-    var u = function(){
-        if (jump_dir == 1){
-            if (cam.z > jump_peak){
-                cam.z = jump_peak;
-                jump_dir = -1;
-            } else {
-                cam.z += ji
-            }
-        } else {
-            cam.z -= ji;
-        }
-        if (cam.z - ji >= jump_rest){
-            setTimeout(u, 1000 / fps);
-        } else {
-            cam.z = jump_rest;
-            jumping = false;
-        }
-        update();
+function incr_jump(){
+    if (!jumping) return;
+    //next z pos
+    var nz = cam.z + jump_spd / time_diff_s * jump_dir;
+    if (nz > jump_peak){
+        cam.z = jump_peak;
+        jump_dir = -1;
+    } else if (nz < jump_rest){
+        cam.z = jump_rest;
+        jumping = false;
+    } else {
+        cam.z = nz;
     }
-    jumping = true;
-    u();
 }
-        
 
+
+function jump(){
+    //going up
+    jump_dir = 1;
+    //store resting height
+    jump_rest = cam.z;
+    //set goal
+    jump_peak = jump_rest + jump_height;
+    //we're jumping
+    jumping = true;
+}
 
 /**********************************
         EVENT LISTENERS
@@ -186,10 +224,12 @@ function jump(){
 
 /*** BASIC SCREEN RESIZE ***/
 
-window.addEventListener("resize", function(){
-    fts();
-    update();
-});
+window.addEventListener("resize", fts);
+
+function fts(){
+    cnvs.width = innerWidth;
+    cnvs.height = innerHeight;
+}
 
 /*** KEYBOARD EVENTS ***/
 
@@ -197,44 +237,21 @@ window.addEventListener("resize", function(){
 document.addEventListener("keypress", kd);
 document.addEventListener("keyup", ku);
 
-//IDs for the setIntervals running on held keys
-var key_ids = {};
 
+//note to self, make anonymous if still one line after a couple of revs
 function kd(e){
-    var k = e.key;
-    var wasd = {'w': 0, 'a': -90, 's': 180, 'd': 90};
-    //if key is in 'wasd' and is not already being pressed
-    if (wasd.hasOwnProperty(k) && !key_ids.hasOwnProperty(k)){
-        var stp = function(){
-            step(wasd[k]); 
-            update();
-        };
-        stp();
-        key_ids[k] = setInterval(stp, 1000 / fps);
-    } else if (k == ' '){
-        jump();
-    } else if ('zx'.includes(k)){
-        console.log('zx')
-        cam.z += 0.5 * (k == 'z' ? 1 : -1);
-        update();
-    } else if (k == 'f') {
-        wireframe = !wireframe;
-        update();
-    }
+    pressed_keys.add(e.key);
 }
 
 function ku(e){
-    var k = e.key;
-    if ('wasd'.includes(k)){
-        clearInterval(key_ids[k]);
-        delete key_ids[k];1
-    }
+    pressed_keys.delete(e.key);
 }
 
 function step(angle){
-    var stride = spd / fps;
-    cam.x += Math.sin(toRad(cam.yaw + angle)) * stride;
-    cam.y += Math.cos(toRad(cam.yaw + angle)) * stride;
+    //step distance
+    var sd= spd / fps * time_diff_s;
+    cam.x += Math.sin(zengine.to_rad(cam.yaw + angle)) * sd;
+    cam.y += Math.cos(zengine.to_rad(cam.yaw + angle)) * sd;
 }
 
 /***  MOUSE EVENTS ***/
@@ -245,7 +262,7 @@ document.addEventListener("pointerlockchange", function(){
     if (document.pointerLockElement == cnvs){
         document.addEventListener("mousemove", mm);
         document.addEventListener("click", mc);
-        update();
+        requestAnimationFrame(update);
     } else {
         document.removeEventListener("mousemove", mm);
         document.removeEventListener("mouseclick", mc);
@@ -255,7 +272,7 @@ document.addEventListener("pointerlockchange", function(){
 function mc(){
     for (var i = 0; i < zombies.length; i++){
         var z = zombies[i];
-        var r = zomb.map(f => ({verts: f.verts.map(zAxisRotate(z.yaw)).map(translate(z.x, z.y, z.z)), col: f.col}));
+        var r = zomb.map(f => ({verts: f.verts.map(zengine.z_axis_rotate(z.yaw)).map(zengine.translate(z.x, z.y, z.z)), col: f.col}));
         if (in_scope(r)){
             zombies.splice(i, 1);
             zombies.push({
@@ -266,7 +283,6 @@ function mc(){
             });
         }
     }
-    update();
 }
 
 function mm(e){
@@ -322,25 +338,18 @@ function in_polygon(p, poly){
 function in_scope(obj){
     var faces = obj.map(f => f.verts);
     for (var f = 0; f < faces.length; f++){
-        var aligned = faces[f]
-        .map(translate(-cam.x, -cam.y, -cam.z))
-        .map(zAxisRotate(toRad(cam.yaw)))
-        .map(yAxisRotate(toRad(cam.roll)))
-        .map(xAxisRotate(toRad(cam.pitch)))
-        .map(translate(cam.x,cam.y,cam.z));
+        var aligned = faces[f].map(zengine.translate(-cam.x, -cam.y, -cam.z))
+                              .map(zengine.z_axis_rotate(zengine.to_rad(cam.yaw)))
+                              .map(zengine.y_axis_rotate(zengine.to_rad(cam.roll)))
+                              .map(zengine.x_axis_rotate(zengine.to_rad(cam.pitch)))
+                              .map(zengine.translate(cam.x, cam.y, cam.z));
 
         var face2d = aligned.map(c => (
-        {x: toDeg(Math.atan2(c.x - cam.x, c.y - cam.y)),
-         y: toDeg(Math.atan2(c.z - cam.z, c.y - cam.y))
+        {x: zengine.to_deg(Math.atan2(c.x - cam.x, c.y - cam.y)),
+         y: zengine.to_deg(Math.atan2(c.z - cam.z, c.y - cam.y))
         }));
         
         if (in_polygon({x: 0, y: 0}, face2d)) return true;
     }
     return false;
-}
-
-//fit to screen
-function fts(){
-    cnvs.width = innerWidth;
-    cnvs.height = innerHeight;
 }
