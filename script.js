@@ -261,7 +261,8 @@ function startup(){
     ctx.fillText("apocalombie", cnvs.width / 2, cnvs.height / 2 - 100);
     ctx.fillStyle = "#fff";
     ctx.font = "20px monospace";
-    ctx.fillText("click to enter", cnvs.width / 2, cnvs.height / 2);
+    ctx.fillText("controls: wasd & space", cnvs.width / 2, cnvs.height / 2);
+    ctx.fillText("click to begin", cnvs.width / 2, cnvs.height / 2 + 30);
 }
 
 function crosshairs(){
