@@ -52,7 +52,7 @@ var zomb_r = 4;
 
 /*******************scoring*************************/
 //score increase from killing a zomb
-var scr_incr = 200;
+var scr_incr = 1000;
 //duration of scr
 var scr_dur = 400;
 
@@ -107,6 +107,8 @@ fts();
 //display start up screen
 startup();
 
+console.log("THINK WE CAM CHEAT, DO WE ?");
+console.log("p.s. jokes on you, ich habe diene IP");
 
 function update(time){
     time_diff_s  = time_last_ms ? (time - time_last_ms) / 1000 : 0;
@@ -250,11 +252,15 @@ function mm(e){
 ********************************/
 
 function startup(){
-    ctx.fillStyle = "white";
-    ctx.font = "20px monospace";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
-    ctx.fillText("click to start wasd move, zx lower up and down, space single jump, f wireframe", cnvs.width / 2, cnvs.height / 2);
+    ctx.strokeStyle = ctx.fillStyle = "#f11";
+    ctx.strokeRect(cnvs.width/2-500, cnvs.height/2-200, 1000, 300);
+    ctx.font = "80px monospace";
+    ctx.fillText("apocalombie", cnvs.width / 2, cnvs.height / 2 - 100);
+    ctx.fillStyle = "#fff";
+    ctx.font = "20px monospace";
+    ctx.fillText("click to enter", cnvs.width / 2, cnvs.height / 2);
 }
 
 function crosshairs(){
@@ -346,7 +352,9 @@ function minimap(){
     }
 
     mctx.strokeStyle = "white";
-    for (let r = mscale * ring_gap; r < Math.sqrt(Math.pow(mcnvs.width/2, 2) + Math.pow(mcnvs.height/2, 2)); r += mscale * ring_gap){
+    for (let r = mscale * ring_gap;
+         r < Math.sqrt(Math.pow(mcnvs.width/2, 2) + Math.pow(mcnvs.height/2, 2));
+         r += mscale * ring_gap){
         mctx.beginPath();
         mctx.arc(mcnvs.width/2, mcnvs.height/2, r, 0, Math.PI * 2);
         mctx.stroke();
@@ -444,45 +452,3 @@ function jump(){
     //we're jumping
     jumping = true;
 }
-
-
-/*
-function minimap(world){
-    mctx.clearRect(0, 0, mcnvs.width, mcnvs.height);
-    for (let i = 0; i < world.length; i++){
-        //spin face to be in line with player
-        let f = world[i].verts.map(zengine.translate(-cam.x, -cam.y, -cam.z))
-                              .map(zengine.z_axis_rotate(zengine.to_rad(cam.yaw)));
-        mctx.strokeStyle = wireframe ? "white" : "black";
-        mctx.beginPath();
-        mctx.moveTo(mcnvs.width/2 + f[0].x * mscale, mcnvs.height/2 - f[0].y * mscale);
-        for (let j = 1; j < f.length; j++){
-            mctx.lineTo(mcnvs.width/2 + f[j].x * mscale, mcnvs.height/2 - f[j].y * mscale);
-        }
-        mctx.closePath(); mctx.stroke();
-        if (!wireframe){
-            mctx.fillStyle = world[i].col;
-            mctx.fill()
-        }
-    }
-    mctx.beginPath();
-    mctx.moveTo(mcnvs.width/2, mcnvs.height/2);
-    mctx.lineTo(mcnvs.width/2 + Math.sin(zengine.to_rad(cam.fov)/2) * mcnvs.height / 2, 0);
-    mctx.lineTo(mcnvs.width/2 - Math.sin(zengine.to_rad(cam.fov)/2) * mcnvs.height / 2, 0);
-    mctx.closePath();
-    if (wireframe){
-        mctx.strokeStyle = "white";
-        mctx.stroke();
-    } else {
-        mctx.fillStyle = "rgba(0, 255, 200, 0.4)";
-        mctx.fill();
-    }
-
-    mctx.strokeStyle = "white";
-    for (let r = mscale * ring_gap; r < Math.sqrt(Math.pow(mcnvs.width/2, 2) + Math.pow(mcnvs.height/2, 2)); r += mscale * ring_gap){
-        mctx.beginPath();
-        mctx.arc(mcnvs.width/2, mcnvs.height/2, r, 0, Math.PI * 2);
-        mctx.stroke();
-    }
-}
-*/
