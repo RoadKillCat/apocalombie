@@ -65,7 +65,7 @@ var sens = 4;
 var spd = 12;
 
 //jump
-var jump_height = 6;
+var jump_height = 7;
 var jump_spd =  16;    //units per second
 var jumping = false;
 var jump_dir;
