@@ -275,9 +275,9 @@ function crosshairs(){
     ctx.stroke();
     ctx.font = cross_f;
     ctx.textBaseline = "middle"; ctx.textAlign = "left";
-    ctx.fillText(cam.pitch.toString(), cnvs.width/2 + cross_h + cross_p, cnvs.height/2);
+    ctx.fillText((parseInt(cam.pitch*10)/10).toString(), cnvs.width/2 + cross_h + cross_p, cnvs.height/2);
     ctx.textBaseline = "top"; ctx.textAlign = "center";
-    ctx.fillText(cam.yaw.toString(),   cnvs.width/2, cnvs.height/2 + cross_h + cross_p);
+    ctx.fillText((parseInt(cam.yaw*10)/10).toString(),   cnvs.width/2, cnvs.height/2 + cross_h + cross_p);
 }
 
 function in_polygon(p, poly){
