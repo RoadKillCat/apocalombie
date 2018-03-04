@@ -1,15 +1,24 @@
 "use strict";
 
-//retrieve canvas and 2d context
+//retrieve canvases and 2d contexts
 var cnvs = document.getElementById("cnvs");
 var ctx = cnvs.getContext("2d");
+var mcnvs = document.getElementById("mcnvs"); //map
+var mctx = mcnvs.getContext("2d");
 
-/*** VARIABLES ***/
+/*************************************************
+                     VARIABLES
+**************************************************/
 
-/* GENERAL */
-
-//cam position
-var cam = {x: 0, y: 0, z: 3.5, yaw: 0, pitch: 0, roll: 0, fov: 50};
+/**********************general********************/
+//id of the animation frame
+var update_id;
+//have they clicked start?
+var in_play = false;
+//eaten
+var eaten = false;
+//wirerame?
+var wireframe = false;
 //time, in microseconds, of last animation frame
 var time_last_ms;
 //time difference, in seconds, from last anim. frame
@@ -17,13 +26,28 @@ var time_diff_s;
 //set of keys currently being pressed
 var pressed_keys = new Set();
 
-/* SETTINGS */
+/******************crosshairs**********************/
+//crosshair height
+var cross_h = 20;
+//crosshair cam padding
+var cross_p = 2;
+//crosshair font
+var cross_f = "8px monospace";
 
-var wireframe = false;
+/**********************map**************************/
+//how many times smaller than the whole screen
+var msize = 4;
+//scale of the map
+var mscale = 10;
+///gap, in units, between each ring
+var ring_gap = 2;
+//radii of zombie red dots
+var zomb_r = 4;
 
 
-/* PLAYER */
-
+/********************player*************************/
+//starting (cam) position
+var cam = {x: 0, y: 0, z: 3.5, yaw: 0, pitch: 0, roll: 0, fov: 50};
 //sensitivity of mouse movement
 var sens = 8;
 //speed, units per second
@@ -37,92 +61,28 @@ var jump_dir;
 var jump_rest;
 var jump_peak;
 
+/********************zombie*************************/
+//min and max spawn distances, in units, from player
+var min_spwn = 4;
+var max_spwn = 16;
+var zomb_kill_dst = 1;  //units
+var zomb_spd = 8;       //units per second
+var zomb_turn_spd = 60; //degrees per second
 
-/* ZOMBIE */
+//maximum alowed, otherwise rendering slows down a lot
+var max_zombies = 48;
 
-/*
-key:
- - xh : x's height
- - xw : x's width
- - xt : x's thickness
- - xc : x's colour
- - hn : nose height
-*/
-
-//head
-var hh = 0.4;
-var hw = 0.5;
-var ht = 0.8;
-var hn = 0.15;
-var hcb = "#e30";
-var hcs = "#f41";
-
-//torso
-var th = 1.7;
-var tw = 1;
-var tt = 0.3;
-var tcf = "#d98";
-var tcb = "#c65";
-var tcs = "#c54";
-
-//legs
-var lh = 2;
-var lw = 0.4;
-var lco = "#c54";
-var lci = "#a32";
-
-//arms
-var al = 1.5;
-var ah = 0.3;
-var aw = 0.25;
-var aco = "#d76";
-var aci = "#a32";
-
-var zomb = [
-//head
-{verts: [{x: 0,    y: 0, z: lh+th   }, {x: -hw/2, y: 0, z: lh+th+hh}, {x: hw/2, y: 0,  z: lh+th+hh}], col: hcb},
-{verts: [{x: 0,    y: 0, z: lh+th   }, {x:  hw/2, y: 0, z: lh+th+hh}, {x: 0,    y: ht, z: lh+th+hn}], col: hcs},
-{verts: [{x: 0,    y: 0, z: lh+th   }, {x: -hw/2, y: 0, z: lh+th+hh}, {x: 0,    y: ht, z: lh+th+hn}], col: hcs},
-{verts: [{x: hw/2, y: 0, z: lh+th+hh}, {x: -hw/2, y: 0, z: lh+th+hh}, {x: 0,    y: ht, z: lh+th+hn}], col: hcs}, 
-//torso
-{verts: [{x: -tw/2, y: 0,  z: lh   }, {x: -tw/2, y: 0,  z: lh+th}, {x:  tw/2, y: 0,  z: lh+th}, {x:  tw/2, y: 0,  z: lh   }], col: tcb},
-{verts: [{x:  tw/2, y: tt, z: lh   }, {x:  tw/2, y: tt, z: lh+th}, {x:  tw/2, y: 0,  z: lh+th}, {x:  tw/2, y: 0,  z: lh   }], col: tcs},
-{verts: [{x: -tw/2, y: 0,  z: lh   }, {x: -tw/2, y: 0,  z: lh+th}, {x: -tw/2, y: tt, z: lh+th}, {x: -tw/2, y: tt, z: lh   }], col: tcs},
-{verts: [{x: -tw/2, y: tt, z: lh   }, {x: -tw/2, y: tt, z: lh+th}, {x:  tw/2, y: tt, z: lh+th}, {x:  tw/2, y: tt, z: lh   }], col: tcf},
-{verts: [{x: -tw/2, y: 0,  z: lh+th}, {x: -tw/2, y: tt, z: lh+th}, {x:  tw/2, y: tt, z: lh+th}, {x:  tw/2, y: 0,  z: lh+th}], col: tcs},
-{verts: [{x: -tw/2, y: 0,  z: lh   }, {x: -tw/2, y: tt, z: lh   }, {x:  tw/2, y: tt, z: lh   }, {x:  tw/2, y: 0,  z: lh   }], col: tcs},
-//legs
-{verts: [{x: -tw/2, y: 0,  z: lh}, {x: -tw/2,    y: tt,   z: lh}, {x: -tw/2, y: tt/2, z: lh}], col: lco},
-{verts: [{x: -tw/2, y: 0,  z: lh}, {x: -tw/2,    y: tt,   z: lh}, {x: -tw/2, y: tt/2, z: 0 }], col: lco},
-{verts: [{x: -tw/2, y: tt, z: lh}, {x: -tw/2+lw, y: tt/2, z: lh}, {x: -tw/2, y: tt/2, z: 0 }], col: lci},
-{verts: [{x: -tw/2, y: 0,  z: lh}, {x: -tw/2+lw, y: tt/2, z: lh}, {x: -tw/2, y: tt/2, z: 0 }], col: lci},
-//////
-{verts: [{x:  tw/2, y: 0,  z: lh}, {x:  tw/2,    y: tt,   z: lh}, {x: tw/2-lw, y: tt/2, z: lh}], col: lco},
-{verts: [{x:  tw/2, y: 0,  z: lh}, {x:  tw/2,    y: tt,   z: lh}, {x: tw/2,    y: tt/2, z: 0 }], col: lco},
-{verts: [{x:  tw/2, y: tt, z: lh}, {x:  tw/2-lw, y: tt/2, z: lh}, {x: tw/2,    y: tt/2, z: 0 }], col: lci},
-{verts: [{x:  tw/2, y: 0,  z: lh}, {x:  tw/2-lw, y: tt/2, z: lh}, {x: tw/2,    y: tt/2, z: 0 }], col: lci},
-//arms
-{verts: [{x: -tw/2, y: 0,  z: lh+th},      {x: -tw/2, y: 0,  z: lh+th-ah},   {x: -tw/2-aw, y: 0,  z: lh+th-ah/2}], col: aco},  
-{verts: [{x: -tw/2, y: 0,  z: lh+th},      {x: -tw/2, y: 0,  z: lh+th-ah},   {x: -tw/2,    y: al, z: lh+th-ah/2}], col: aci},  
-{verts: [{x: -tw/2, y: 0,  z: lh+th},      {x: -tw/2, y: al, z: lh+th-ah/2}, {x: -tw/2-aw, y: 0,  z: lh+th-ah/2}], col: aco},  
-{verts: [{x: -tw/2, y: al, z: lh+th-ah/2}, {x: -tw/2, y: 0,  z: lh+th-ah},   {x: -tw/2-aw, y: 0,  z: lh+th-ah/2}], col: aco},  
-//////
-{verts: [{x:  tw/2, y: 0,  z: lh+th},      {x:  tw/2, y: 0,  z: lh+th-ah},   {x:  tw/2+aw, y: 0,  z: lh+th-ah/2}], col: aco},  
-{verts: [{x:  tw/2, y: 0,  z: lh+th},      {x:  tw/2, y: 0,  z: lh+th-ah},   {x:  tw/2,    y: al, z: lh+th-ah/2}], col: aci},  
-{verts: [{x:  tw/2, y: 0,  z: lh+th},      {x:  tw/2, y: al, z: lh+th-ah/2}, {x:  tw/2+aw, y: 0,  z: lh+th-ah/2}], col: aco},  
-{verts: [{x:  tw/2, y: al, z: lh+th-ah/2}, {x:  tw/2, y: 0,  z: lh+th-ah},   {x:  tw/2+aw, y: 0,  z: lh+th-ah/2}], col: aco},  
-]
-
-var no_zombs = 1;
-
+//array to store coordinates of zombos
 var zombies = [];
 
 function new_zomb(){
+    let y = Math.random() * Math.PI * 2;
+    let d = min_spwn + Math.random() * (max_spwn - min_spwn);
     zombies.push({
-        x: 0,
-        y: 10,
+        x: cam.x + Math.cos(y) * d,
+        y: cam.y + Math.sin(y) * d,
         z: 0,
-        yaw: 0
+        yaw: Math.random() * 360 - 180
     })
 }
 
@@ -141,50 +101,60 @@ function update(time){
     time_diff_s  = time_last_ms ? (time - time_last_ms) / 1000 : 0;
     time_last_ms = time;
 
+    update_zombs();
+    if (eaten) return;
+
     handle_keys();
     incr_jump();
+    minimap();
     zengine.render(construct_world(), cam, cnvs, wireframe);
-    circle(cnvs.width / 2, cnvs.height / 2, 10);
-
-    requestAnimationFrame(update);
+    crosshairs();
+    
+    update_id = requestAnimationFrame(update);
 }
 
-function handle_keys(tds){
-    for (var k of pressed_keys){
-        switch (k){
-            case 'w':
-                step(0);
-                break;
-            case 'a':
-                step(-90);
-                break;
-            case 's':
-                step(180);
-                break;
-            case 'd':
-                step(90);
-                break;
-            case ' ':
-                if (!jumping) jump();
-                break;
-            case 'f':
-                wireframe = !wireframe;
-                break;
-            case 'z':
-                cam.z += 0.5;
-                break;
-            case 'x':
-                cam.z -= 0.5;
-                break;
+function display_death(){
+    ctx.fillStyle = "#fff";
+    ctx.font = "20px monospace";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("you have been eaten; f5 to resurrect", cnvs.width / 2, cnvs.height / 2 - 32);
+}
+
+function update_zombs(){
+    zombies = zombies.map(function (z){
+        ///step and turn intervals
+        let si = zomb_spd * time_diff_s
+        let ti = zomb_turn_spd * time_diff_s;
+        //distance to camera
+        let cd = Math.sqrt(Math.pow(cam.x - z.x, 2) + Math.pow(cam.y - z.y, 2));
+        if (cd < zomb_kill_dst){
+            eaten = true;
+            console.log("gameover");
+            display_death();
         }
-    }
+        //angle to camera from y-axis
+        let atc = zengine.to_deg(Math.atan2(cam.x - z.x, cam.y - z.y)); 
+        //camera offset
+        let co = atc - z.yaw;
+        //remove overflows
+        co += co < -180 ? 360 : co > 180 ? -360 : 0;
+        if (-ti < co && co < ti){
+            return {x: z.x + si * Math.sin(zengine.to_rad(atc)),
+                    y: z.y + si * Math.cos(zengine.to_rad(atc)), 
+                    z: z.z, yaw: atc};
+        } else {
+            return {x: z.x, y: z.y, z: z.z,
+                    yaw: z.yaw + ti * (co> 0 ? 1 : -1)};
+        }
+    });
 }
 
 function construct_world(){
-    var faces = [];
-    for (var i = 0; i < zombies.length; i++){
-        var z = zombies[i];
-        faces = faces.concat(zomb.map(f => ({verts: f.verts.map(zengine.z_axis_rotate(z.yaw))
+    let faces = [];
+    for (let i = 0; i < zombies.length; i++){
+        let z = zombies[i];
+        faces = faces.concat(zomb.map(f => ({verts: f.verts.map(zengine.z_axis_rotate(zengine.to_rad(-z.yaw)))
                                                            .map(zengine.translate(z.x, z.y, z.z)),
                                              col: f.col})));
     }
@@ -194,7 +164,7 @@ function construct_world(){
 function incr_jump(){
     if (!jumping) return;
     //next z pos
-    var nz = cam.z + jump_spd / time_diff_s * jump_dir;
+    let nz = cam.z + jump_spd * time_diff_s * jump_dir;
     if (nz > jump_peak){
         cam.z = jump_peak;
         jump_dir = -1;
@@ -205,7 +175,6 @@ function incr_jump(){
         cam.z = nz;
     }
 }
-
 
 function jump(){
     //going up
@@ -229,18 +198,26 @@ window.addEventListener("resize", fts);
 function fts(){
     cnvs.width = innerWidth;
     cnvs.height = innerHeight;
+    mcnvs.width = innerWidth / msize;
+    mcnvs.height = innerHeight / msize;
 }
 
 /*** KEYBOARD EVENTS ***/
 
-
 document.addEventListener("keypress", kd);
 document.addEventListener("keyup", ku);
 
-
 //note to self, make anonymous if still one line after a couple of revs
 function kd(e){
-    pressed_keys.add(e.key);
+    if ('f'.includes(e.key)){
+        switch (e.key){
+            case 'f':
+                wireframe = !wireframe;
+            break;
+        }
+    } else {
+        pressed_keys.add(e.key);
+    }
 }
 
 function ku(e){
@@ -249,45 +226,82 @@ function ku(e){
 
 function step(angle){
     //step distance
-    var sd= spd * time_diff_s;
+    let sd= spd * time_diff_s;
     cam.x += Math.sin(zengine.to_rad(cam.yaw + angle)) * sd;
     cam.y += Math.cos(zengine.to_rad(cam.yaw + angle)) * sd;
 }
 
+function handle_keys(tds){
+    for (let k of pressed_keys){
+        switch (k){
+            case 'w':
+                step(0);
+                break;
+            case 'a':
+                step(-90);
+                break;
+            case 's':
+                step(180);
+                break;
+            case 'd':
+                step(90);
+                break;
+            case ' ':
+                if (!jumping) jump();
+                break;
+            case 'z':
+                cam.z += 0.5;
+                break;
+            case 'x':
+                cam.z -= 0.5;
+                break;
+        }
+    }
+}
+
 /***  MOUSE EVENTS ***/
 
-cnvs.onclick = () => cnvs.requestPointerLock();
+cnvs.onclick = function(){
+    if (!in_play)
+    cnvs.requestPointerLock();
+}
 
 document.addEventListener("pointerlockchange", function(){
     if (document.pointerLockElement == cnvs){
+        in_play = true;
+        mcnvs.style.display = "block";
+        time_last_ms = performance.now();
+        update_id = requestAnimationFrame(update);
         document.addEventListener("mousemove", mm);
         document.addEventListener("click", mc);
-        requestAnimationFrame(update);
     } else {
+        in_play = false;
+        cancelAnimationFrame(update_id);
         document.removeEventListener("mousemove", mm);
         document.removeEventListener("mouseclick", mc);
     }
 })
 
-function mc(){
-    for (var i = 0; i < zombies.length; i++){
-        var z = zombies[i];
-        var r = zomb.map(f => ({verts: f.verts.map(zengine.z_axis_rotate(z.yaw)).map(zengine.translate(z.x, z.y, z.z)), col: f.col}));
-        if (in_scope(r)){
+function mc(e){
+    if (e.button) return;
+    for (let i = 0; i < zombies.length; i++){
+        let z = zombies[i];
+        if (in_scope(zomb.map(f => f.verts.map(zengine.z_axis_rotate(-z.yaw))
+                                          .map(zengine.translate(z.x, z.y, z.z))))){
+            console.log("shot, zombo", i);
             zombies.splice(i, 1);
-            zombies.push({
-                x: Math.random() * 10,
-                y: Math.random() * 10,
-                z: 0,
-                yaw: 0
-            });
+            new_zomb();
+            if (zombies.length < max_zombies) new_zomb();
+            break; //only one kill per shot!
         }
     }
 }
 
 function mm(e){
     cam.yaw += e.movementX / sens;
+    cam.yaw += cam.yaw < -180 ? 360 : cam.yaw > 180 ? -360 : 0;
     cam.pitch -= e.movementY / sens;
+    cam.pitch += cam.pitch < -180 ? 360 : cam.pitch > 180 ? -360 : 0;
 }
 
 /********************************
@@ -297,24 +311,33 @@ function mm(e){
 function startup(){
     ctx.fillStyle = "white";
     ctx.font = "20px monospace";
+    ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText("click to start wasd move, zx lower up and down, space single jump, f wireframe", cnvs.width / 2, cnvs.height / 2);
 }
 
-function circle(x, y, r){
-    ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
+function crosshairs(){
+    ctx.strokeStyle = ctx.fillStyle = "#0f0";
     ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(cnvs.width/2 - cross_h, cnvs.height/2);
+    ctx.lineTo(cnvs.width/2 + cross_h, cnvs.height/2);
+    ctx.moveTo(cnvs.width/2, cnvs.height/2 - cross_h);
+    ctx.lineTo(cnvs.width/2, cnvs.height/2 + cross_h);
+    ctx.stroke();
+    ctx.font = cross_f;
+    ctx.textBaseline = "middle"; ctx.textAlign = "left";
+    ctx.fillText(cam.pitch.toString(), cnvs.width/2 + cross_h + cross_p, cnvs.height/2);
+    ctx.textBaseline = "top"; ctx.textAlign = "center";
+    ctx.fillText(cam.yaw.toString(),   cnvs.width/2, cnvs.height/2 + cross_h + cross_p);
 }
 
 function in_polygon(p, poly){
     //bounding box quick check
-    var min_x = poly[0].x;
-    var max_x = poly[0].x;
-    var min_y = poly[0].y;
-    var max_y = poly[0].y;
-    for (var i = 1; i < poly.length; i++){
+    let min_x = poly[0].x;
+    let max_x = poly[0].x;
+    let min_y = poly[0].y;
+    let max_y = poly[0].y;
+    for (let i = 1; i < poly.length; i++){
         min_x = Math.min(min_x, poly[i].x);
         max_x = Math.max(max_x, poly[i].x);
         min_y = Math.min(min_y, poly[i].y);
@@ -322,9 +345,9 @@ function in_polygon(p, poly){
     }
     if (p.x < min_x || p.x > max_x || p.y < min_y || p.y > max_y) return false;
     //if passed bounding box, try ray casting
-    var inside = false;
-    for (var i = 0; i < poly.length; i++){
-        var j = i < poly.length - 1 ? i + 1 : 0;
+    let inside = false;
+    for (let i = 0; i < poly.length; i++){
+        let j = i < poly.length - 1 ? i + 1 : 0;
         //check if crosses line and if that cross is to the right of the point
         if ((poly[i].y < p.y && poly[j].y > p.y || poly[i].y > p.y && poly[j].y < p.y) &&
             p.x < ((p.y - poly[i].y) * (poly[j].x - poly[i].x)) / (poly[j].y - poly[i].y) + poly[i].x){
@@ -334,16 +357,15 @@ function in_polygon(p, poly){
     return inside;
 }
 
-function in_scope(obj){
-    var faces = obj.map(f => f.verts);
-    for (var f = 0; f < faces.length; f++){
-        var aligned = faces[f].map(zengine.translate(-cam.x, -cam.y, -cam.z))
+function in_scope(faces){
+    for (let f = 0; f < faces.length; f++){
+        let aligned = faces[f].map(zengine.translate(-cam.x, -cam.y, -cam.z))
                               .map(zengine.z_axis_rotate(zengine.to_rad(cam.yaw)))
                               .map(zengine.y_axis_rotate(zengine.to_rad(cam.roll)))
                               .map(zengine.x_axis_rotate(zengine.to_rad(cam.pitch)))
                               .map(zengine.translate(cam.x, cam.y, cam.z));
 
-        var face2d = aligned.map(c => (
+        let face2d = aligned.map(c => (
         {x: zengine.to_deg(Math.atan2(c.x - cam.x, c.y - cam.y)),
          y: zengine.to_deg(Math.atan2(c.z - cam.z, c.y - cam.y))
         }));
@@ -352,3 +374,81 @@ function in_scope(obj){
     }
     return false;
 }
+
+function minimap(){
+    mctx.clearRect(0, 0, mcnvs.width, mcnvs.height);
+    for (let i = 0; i < zombies.length; i++){
+        mctx.beginPath();
+        let c = zengine.z_axis_rotate(zengine.to_rad(cam.yaw))(
+                zengine.translate(-cam.x, -cam.y, 0)(zombies[i]))
+        mctx.arc(mcnvs.width/2  + c.x * mscale,
+                 mcnvs.height/2 - c.y * mscale, zomb_r, 0, Math.PI * 2);
+        if (wireframe){
+            mctx.stroke();
+        } else {
+            mctx.fillStyle = "#f33";
+            mctx.fill();
+        }
+    }
+    
+    mctx.beginPath();
+    mctx.moveTo(mcnvs.width/2, mcnvs.height/2);
+    mctx.lineTo(mcnvs.width/2 + Math.sin(zengine.to_rad(cam.fov)/2) * mcnvs.height / 2, 0);
+    mctx.lineTo(mcnvs.width/2 - Math.sin(zengine.to_rad(cam.fov)/2) * mcnvs.height / 2, 0);
+    mctx.closePath();
+    if (wireframe){
+        mctx.strokeStyle = "white";
+        mctx.stroke();
+    } else {
+        mctx.fillStyle = "rgba(0, 255, 200, 0.2)";
+        mctx.fill();
+    }
+
+    mctx.strokeStyle = "white";
+    for (let r = mscale * ring_gap; r < Math.sqrt(Math.pow(mcnvs.width/2, 2) + Math.pow(mcnvs.height/2, 2)); r += mscale * ring_gap){
+        mctx.beginPath();
+        mctx.arc(mcnvs.width/2, mcnvs.height/2, r, 0, Math.PI * 2);
+        mctx.stroke();
+    }
+}
+
+/*
+function minimap(world){
+    mctx.clearRect(0, 0, mcnvs.width, mcnvs.height);
+    for (let i = 0; i < world.length; i++){
+        //spin face to be in line with player
+        let f = world[i].verts.map(zengine.translate(-cam.x, -cam.y, -cam.z))
+                              .map(zengine.z_axis_rotate(zengine.to_rad(cam.yaw)));
+        mctx.strokeStyle = wireframe ? "white" : "black";
+        mctx.beginPath();
+        mctx.moveTo(mcnvs.width/2 + f[0].x * mscale, mcnvs.height/2 - f[0].y * mscale);
+        for (let j = 1; j < f.length; j++){
+            mctx.lineTo(mcnvs.width/2 + f[j].x * mscale, mcnvs.height/2 - f[j].y * mscale);
+        }
+        mctx.closePath(); mctx.stroke();
+        if (!wireframe){
+            mctx.fillStyle = world[i].col;
+            mctx.fill()
+        }
+    }
+    mctx.beginPath();
+    mctx.moveTo(mcnvs.width/2, mcnvs.height/2);
+    mctx.lineTo(mcnvs.width/2 + Math.sin(zengine.to_rad(cam.fov)/2) * mcnvs.height / 2, 0);
+    mctx.lineTo(mcnvs.width/2 - Math.sin(zengine.to_rad(cam.fov)/2) * mcnvs.height / 2, 0);
+    mctx.closePath();
+    if (wireframe){
+        mctx.strokeStyle = "white";
+        mctx.stroke();
+    } else {
+        mctx.fillStyle = "rgba(0, 255, 200, 0.4)";
+        mctx.fill();
+    }
+
+    mctx.strokeStyle = "white";
+    for (let r = mscale * ring_gap; r < Math.sqrt(Math.pow(mcnvs.width/2, 2) + Math.pow(mcnvs.height/2, 2)); r += mscale * ring_gap){
+        mctx.beginPath();
+        mctx.arc(mcnvs.width/2, mcnvs.height/2, r, 0, Math.PI * 2);
+        mctx.stroke();
+    }
+}
+*/
