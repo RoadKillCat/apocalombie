@@ -67,6 +67,7 @@ var spd = 12;
 //jump
 var jump_height = 7;
 var jump_spd =  16;    //units per second
+var jump_mscale = 1.1; //map scale jump multiplier
 var jumping = false;
 var jump_dir;
 var jump_rest;
@@ -323,13 +324,14 @@ function in_scope(faces){
 }
 
 function minimap(){
+    let mscale_t = mscale * (jumping ? jump_mscale : 1);
     mctx.clearRect(0, 0, mcnvs.width, mcnvs.height);
     for (let i = 0; i < zombies.length; i++){
         mctx.beginPath();
         let c = zengine.z_axis_rotate(zengine.to_rad(cam.yaw))(
                 zengine.translate(-cam.x, -cam.y, 0)(zombies[i]))
-        mctx.arc(mcnvs.width/2  + c.x * mscale,
-                 mcnvs.height/2 - c.y * mscale, zomb_r, 0, Math.PI * 2);
+        mctx.arc(mcnvs.width/2  + c.x * mscale_t,
+                 mcnvs.height/2 - c.y * mscale_t, zomb_r, 0, Math.PI * 2);
         if (wireframe){
             mctx.stroke();
         } else {
@@ -352,9 +354,9 @@ function minimap(){
     }
 
     mctx.strokeStyle = "white";
-    for (let r = mscale * ring_gap;
+    for (let r = mscale_t * ring_gap;
          r < Math.sqrt(Math.pow(mcnvs.width/2, 2) + Math.pow(mcnvs.height/2, 2));
-         r += mscale * ring_gap){
+         r += mscale_t * ring_gap){
         mctx.beginPath();
         mctx.arc(mcnvs.width/2, mcnvs.height/2, r, 0, Math.PI * 2);
         mctx.stroke();
