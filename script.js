@@ -10,21 +10,27 @@ var mctx = mcnvs.getContext("2d");
                      VARIABLES
 **************************************************/
 
-/**********************general********************/
+/***************general/random*********************/
 //id of the animation frame
 var update_id;
 //have they clicked start?
 var in_play = false;
-//eaten
-var eaten = false;
 //wirerame?
 var wireframe = false;
-//time, in microseconds, of last animation frame
+//set of keys currently being pressed
+var pressed_keys = new Set();
+
+/******************timings************************/
+//time, in milliseconds, of start
+var time_start;
+//time, in milliseconds, of last animation frame
 var time_last_ms;
 //time difference, in seconds, from last anim. frame
 var time_diff_s;
-//set of keys currently being pressed
-var pressed_keys = new Set();
+//time of last kill, in milliseconds
+var time_kill_ms;
+//padding of time display
+var time_p = 5;
 
 /******************crosshairs**********************/
 //crosshair height
@@ -38,24 +44,29 @@ var cross_f = "8px monospace";
 //how many times smaller than the whole screen
 var msize = 4;
 //scale of the map
-var mscale = 10;
+var mscale = 4;
 ///gap, in units, between each ring
-var ring_gap = 2;
+var ring_gap = 4;
 //radii of zombie red dots
 var zomb_r = 4;
 
+/*******************scoring*************************/
+//score increase from killing a zomb
+var scr_incr = 200;
+//duration of scr
+var scr_dur = 400;
 
 /********************player*************************/
 //starting (cam) position
 var cam = {x: 0, y: 0, z: 3.5, yaw: 0, pitch: 0, roll: 0, fov: 50};
 //sensitivity of mouse movement
-var sens = 8;
+var sens = 4;
 //speed, units per second
-var spd = 16;
+var spd = 12;
 
 //jump
-var jump_height = 3;
-var jump_spd =  8;    //units per second
+var jump_height = 6;
+var jump_spd =  16;    //units per second
 var jumping = false;
 var jump_dir;
 var jump_rest;
@@ -63,10 +74,10 @@ var jump_peak;
 
 /********************zombie*************************/
 //min and max spawn distances, in units, from player
-var min_spwn = 4;
-var max_spwn = 16;
-var zomb_kill_dst = 1;  //units
-var zomb_spd = 8;       //units per second
+var min_spwn = 12;
+var max_spwn = 32;
+var zomb_kill_dst = 4;  //units *from feet*
+var zomb_spd = 4;       //units per second
 var zomb_turn_spd = 60; //degrees per second
 
 //maximum alowed, otherwise rendering slows down a lot
@@ -102,90 +113,17 @@ function update(time){
     time_last_ms = time;
 
     update_zombs();
-    if (eaten) return;
-
     handle_keys();
     incr_jump();
     minimap();
     zengine.render(construct_world(), cam, cnvs, wireframe);
     crosshairs();
+    disp_score(time);
     
+    if (!am_i_dead())
     update_id = requestAnimationFrame(update);
 }
 
-function display_death(){
-    ctx.fillStyle = "#fff";
-    ctx.font = "20px monospace";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "center";
-    ctx.fillText("you have been eaten; f5 to resurrect", cnvs.width / 2, cnvs.height / 2 - 32);
-}
-
-function update_zombs(){
-    zombies = zombies.map(function (z){
-        ///step and turn intervals
-        let si = zomb_spd * time_diff_s
-        let ti = zomb_turn_spd * time_diff_s;
-        //distance to camera
-        let cd = Math.sqrt(Math.pow(cam.x - z.x, 2) + Math.pow(cam.y - z.y, 2));
-        if (cd < zomb_kill_dst){
-            eaten = true;
-            console.log("gameover");
-            display_death();
-        }
-        //angle to camera from y-axis
-        let atc = zengine.to_deg(Math.atan2(cam.x - z.x, cam.y - z.y)); 
-        //camera offset
-        let co = atc - z.yaw;
-        //remove overflows
-        co += co < -180 ? 360 : co > 180 ? -360 : 0;
-        if (-ti < co && co < ti){
-            return {x: z.x + si * Math.sin(zengine.to_rad(atc)),
-                    y: z.y + si * Math.cos(zengine.to_rad(atc)), 
-                    z: z.z, yaw: atc};
-        } else {
-            return {x: z.x, y: z.y, z: z.z,
-                    yaw: z.yaw + ti * (co> 0 ? 1 : -1)};
-        }
-    });
-}
-
-function construct_world(){
-    let faces = [];
-    for (let i = 0; i < zombies.length; i++){
-        let z = zombies[i];
-        faces = faces.concat(zomb.map(f => ({verts: f.verts.map(zengine.z_axis_rotate(zengine.to_rad(-z.yaw)))
-                                                           .map(zengine.translate(z.x, z.y, z.z)),
-                                             col: f.col})));
-    }
-    return faces;
-}
-
-function incr_jump(){
-    if (!jumping) return;
-    //next z pos
-    let nz = cam.z + jump_spd * time_diff_s * jump_dir;
-    if (nz > jump_peak){
-        cam.z = jump_peak;
-        jump_dir = -1;
-    } else if (nz < jump_rest){
-        cam.z = jump_rest;
-        jumping = false;
-    } else {
-        cam.z = nz;
-    }
-}
-
-function jump(){
-    //going up
-    jump_dir = 1;
-    //store resting height
-    jump_rest = cam.z;
-    //set goal
-    jump_peak = jump_rest + jump_height;
-    //we're jumping
-    jumping = true;
-}
 
 /**********************************
         EVENT LISTENERS
@@ -249,12 +187,12 @@ function handle_keys(tds){
             case ' ':
                 if (!jumping) jump();
                 break;
-            case 'z':
+/*            case 'z':
                 cam.z += 0.5;
                 break;
             case 'x':
                 cam.z -= 0.5;
-                break;
+                break;*/
         }
     }
 }
@@ -270,7 +208,7 @@ document.addEventListener("pointerlockchange", function(){
     if (document.pointerLockElement == cnvs){
         in_play = true;
         mcnvs.style.display = "block";
-        time_last_ms = performance.now();
+        time_start = time_last_ms = performance.now();
         update_id = requestAnimationFrame(update);
         document.addEventListener("mousemove", mm);
         document.addEventListener("click", mc);
@@ -284,14 +222,17 @@ document.addEventListener("pointerlockchange", function(){
 
 function mc(e){
     if (e.button) return;
+    var ordered_zombs = zombies.sort((a, b) => zengine.distance(a, cam) - zengine.distance(b, cam));
     for (let i = 0; i < zombies.length; i++){
-        let z = zombies[i];
+        let z = ordered_zombs[i];
         if (in_scope(zomb.map(f => f.verts.map(zengine.z_axis_rotate(-z.yaw))
                                           .map(zengine.translate(z.x, z.y, z.z))))){
             console.log("shot, zombo", i);
             zombies.splice(i, 1);
             new_zomb();
             if (zombies.length < max_zombies) new_zomb();
+            time_kill_ms = performance.now();
+            time_start -= scr_incr;
             break; //only one kill per shot!
         }
     }
@@ -411,6 +352,99 @@ function minimap(){
         mctx.stroke();
     }
 }
+
+function disp_score(time){
+    ctx.fillStyle = "#fff";
+    ctx.font = "20px monospace";
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+    ctx.fillText(parseInt(time - time_start).toString(), time_p, time_p);
+    if (time - time_kill_ms < scr_dur){
+        ctx.fillStyle = "#fd5";
+        ctx.fillText("+"+scr_incr.toString(), time_p, time_p*2 + 20);
+    }
+}    
+
+function disp_death(){
+    ctx.fillStyle = "#f004";
+    ctx.fillRect(0, 0, cnvs.width, cnvs.height);
+    ctx.fillStyle = "#fff";
+    ctx.font = "20px monospace";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("you have been eaten; f5 to resurrect", cnvs.width / 2, cnvs.height / 2 - 32);
+}
+
+function am_i_dead(){
+    for (let i = 0; i < zombies.length; i++){
+        if (zengine.distance(cam, zombies[i]) < zomb_kill_dst){
+            disp_death();
+            document.exitPointerLock();
+            return true;
+         }
+    }
+    return false;
+}
+
+function update_zombs(){
+    zombies = zombies.map(function (z){
+        ///step and turn intervals
+        let si = zomb_spd * time_diff_s
+        let ti = zomb_turn_spd * time_diff_s;
+        //angle to camera from y-axis
+        let atc = zengine.to_deg(Math.atan2(cam.x - z.x, cam.y - z.y)); 
+        //camera offset
+        let co = atc - z.yaw;
+        //remove overflows
+        co += co < -180 ? 360 : co > 180 ? -360 : 0;
+        if (-ti < co && co < ti){
+            return {x: z.x + si * Math.sin(zengine.to_rad(atc)),
+                    y: z.y + si * Math.cos(zengine.to_rad(atc)), 
+                    z: z.z, yaw: atc};
+        } else {
+            return {x: z.x, y: z.y, z: z.z,
+                    yaw: z.yaw + ti * (co> 0 ? 1 : -1)};
+        }
+    });
+}
+
+function construct_world(){
+    let faces = [];
+    for (let i = 0; i < zombies.length; i++){
+        let z = zombies[i];
+        faces = faces.concat(zomb.map(f => ({verts: f.verts.map(zengine.z_axis_rotate(zengine.to_rad(-z.yaw)))
+                                                           .map(zengine.translate(z.x, z.y, z.z)),
+                                             col: f.col})));
+    }
+    return faces;
+}
+
+function incr_jump(){
+    if (!jumping) return;
+    //next z pos
+    let nz = cam.z + jump_spd * time_diff_s * jump_dir;
+    if (nz > jump_peak){
+        cam.z = jump_peak;
+        jump_dir = -1;
+    } else if (nz < jump_rest){
+        cam.z = jump_rest;
+        jumping = false;
+    } else {
+        cam.z = nz;
+    }
+}
+
+function jump(){
+    //going up
+    jump_dir = 1;
+    //store resting height
+    jump_rest = cam.z;
+    //set goal
+    jump_peak = jump_rest + jump_height;
+    //we're jumping
+    jumping = true;
+}
+
 
 /*
 function minimap(world){
