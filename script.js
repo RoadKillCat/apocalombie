@@ -203,7 +203,7 @@ function handle_keys(tds){
 /***  MOUSE EVENTS ***/
 
 cnvs.onclick = function(){
-    if (!in_play)
+    if (in_play) return;
     cnvs.requestPointerLock();
 }
 
@@ -228,8 +228,14 @@ function mc(e){
     var ordered_zombs = zombies.sort((a, b) => zengine.distance(a, cam) - zengine.distance(b, cam));
     for (let i = 0; i < zombies.length; i++){
         let z = ordered_zombs[i];
-        if (in_scope(zomb.map(f => f.verts.map(zengine.z_axis_rotate(-z.yaw))
-                                          .map(zengine.translate(z.x, z.y, z.z))))){
+        if (zengine.dot_prod({x: z.x - cam.x, y: z.y - cam.y, z: z.z - cam.z},
+                      {x: Math.sin(zengine.to_rad(cam.yaw)) * Math.cos(zengine.to_rad(cam.pitch)),
+                       y: Math.cos(zengine.to_rad(cam.yaw)) * Math.cos(zengine.to_rad(cam.pitch)),
+                       z: Math.sin(zengine.to_rad(cam.pitch))
+                      }) > 0 &&
+            in_scope(zomb.map(f => f.verts.map(zengine.z_axis_rotate(-z.yaw))
+                                          .map(zengine.translate(z.x, z.y, z.z))))
+            ){
             console.log("shot, zombo", i);
             zombies.splice(i, 1);
             new_zomb();
@@ -435,6 +441,7 @@ function incr_jump(){
     //next z pos
     let nz = cam.z + jump_spd * time_diff_s * jump_dir;
     if (nz > jump_peak){
+        if (pressed_keys.has("q")) jumping = false;
         cam.z = jump_peak;
         jump_dir = -1;
     } else if (nz < jump_rest){
