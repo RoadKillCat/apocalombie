@@ -66,6 +66,8 @@ var cam = {x: 0, y: 0, z: 3.5, yaw: 0, pitch: 0, roll: 0, fov: 50};
 var sens = 8;
 //speed, units per second
 var spd = 12;
+//am dead?
+var dead = false;
 
 //jump
 var jump_height = 7;
@@ -125,8 +127,9 @@ function update(time){
     zengine.render(construct_world(), cam, cnvs, wireframe);
     crosshairs();
     disp_score(time);
-    
-    if (!am_i_dead())
+    am_i_dead();
+
+    if (!dead)
     update_id = requestAnimationFrame(update);
 }
 
@@ -206,7 +209,7 @@ function handle_keys(tds){
 /***  MOUSE EVENTS ***/
 
 cnvs.onclick = function(){
-    if (in_play) return;
+    if (in_play || dead) return;
     cnvs.requestPointerLock();
 }
 
@@ -409,10 +412,9 @@ function am_i_dead(){
         if (zengine.distance(cam, zombies[i]) < zomb_kill_dst){
             disp_death();
             document.exitPointerLock();
-            return true;
+            dead = true;
          }
     }
-    return false;
 }
 
 function update_zombs(){
