@@ -6,6 +6,9 @@ var ctx = cnvs.getContext("2d");
 var mcnvs = document.getElementById("mcnvs"); //map
 var mctx = mcnvs.getContext("2d");
 
+//retrieve sensitivity slider
+var sens_sldr = document.getElementById("sens_sldr");
+
 /*************************************************
                      VARIABLES
 **************************************************/
@@ -60,7 +63,7 @@ var scr_dur = 400;
 //starting (cam) position
 var cam = {x: 0, y: 0, z: 3.5, yaw: 0, pitch: 0, roll: 0, fov: 50};
 //sensitivity of mouse movement
-var sens = 4;
+var sens = 8;
 //speed, units per second
 var spd = 12;
 
@@ -211,6 +214,7 @@ document.addEventListener("pointerlockchange", function(){
     if (document.pointerLockElement == cnvs){
         in_play = true;
         mcnvs.style.display = "block";
+        sens_sldr.style.display="none";
         time_start = time_last_ms = performance.now();
         update_id = requestAnimationFrame(update);
         document.addEventListener("mousemove", mm);
@@ -248,9 +252,9 @@ function mc(e){
 }
 
 function mm(e){
-    cam.yaw += e.movementX / sens;
+    cam.yaw += e.movementX * sens / 32;
     cam.yaw += cam.yaw < -180 ? 360 : cam.yaw > 180 ? -360 : 0;
-    cam.pitch -= e.movementY / sens;
+    cam.pitch -= e.movementY * sens / 32;
     cam.pitch += cam.pitch < -180 ? 360 : cam.pitch > 180 ? -360 : 0;
 }
 
@@ -259,6 +263,7 @@ function mm(e){
 ********************************/
 
 function startup(){
+    ctx.clearRect(0, 0, cnvs.width, cnvs.height);
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.strokeStyle = ctx.fillStyle = "#f11";
@@ -269,7 +274,14 @@ function startup(){
     ctx.font = "20px monospace";
     ctx.fillText("controls: wasd & space", cnvs.width / 2, cnvs.height / 2);
     ctx.fillText("click to begin", cnvs.width / 2, cnvs.height / 2 + 30);
+    sens_sldr.style.width = 400;
+    sens_sldr.style.top = cnvs.height / 2 + 120;
+    sens_sldr.style.left = cnvs.width / 2 - 200; // sub half of sldr width
+    ctx.fillText("sensitivity:" + sens.toString().padStart(3), cnvs.width / 2, cnvs.height / 2 + 155);
+    ctx.font = "8px monospace";
+    ctx.fillText("DISCLAIMER: by having this game open, you accept full responsibility for the playing of this game", cnvs.width / 2, cnvs.height - 20);
 }
+
 
 function crosshairs(){
     ctx.strokeStyle = ctx.fillStyle = "#0f0";
