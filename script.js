@@ -43,6 +43,12 @@ var cross_p = 2;
 //crosshair font
 var cross_f = "8px monospace";
 
+/*********************world*************************/
+//radius of enclosure square
+var sqr_sz = 32;
+//height of walls
+var wall_ht = 8;
+
 /**********************map**************************/
 //how many times smaller than the whole screen
 var msize = 4;
@@ -83,7 +89,9 @@ var jump_peak;
 var min_spwn = 12;
 var max_spwn = 32;
 var zomb_kill_dst = 4;  //units *from feet*
-var zomb_spd = 4;       //units per second
+var zomb_start_spd = 2;       //units per second
+var zomb_max_spd = 8;
+var zomb_acc = 1;     //units per second ^ 2
 var zomb_turn_spd = 60; //degrees per second
 
 //maximum alowed, otherwise rendering slows down a lot
@@ -99,7 +107,8 @@ function new_zomb(){
         x: cam.x + Math.cos(y) * d,
         y: cam.y + Math.sin(y) * d,
         z: 0,
-        yaw: Math.random() * 360 - 180
+        yaw: Math.random() * 360 - 180,
+        spd: zomb_start_spd
     })
 }
 
@@ -127,6 +136,7 @@ function update(time){
     zengine.render(construct_world(), cam, cnvs, wireframe);
     crosshairs();
     disp_score(time);
+    disp_spds();
     am_i_dead();
 
     if (!dead)
@@ -348,6 +358,7 @@ function in_scope(faces){
 function minimap(){
     let mscale_t = mscale * (jumping ? jump_mscale : 1);
     mctx.clearRect(0, 0, mcnvs.width, mcnvs.height);
+    mctx.strokeStyle = "white";
     for (let i = 0; i < zombies.length; i++){
         mctx.beginPath();
         let c = zengine.z_axis_rotate(zengine.to_rad(cam.yaw))(
@@ -368,14 +379,12 @@ function minimap(){
     mctx.lineTo(mcnvs.width/2 - Math.sin(zengine.to_rad(cam.fov)/2) * mcnvs.height / 2, 0);
     mctx.closePath();
     if (wireframe){
-        mctx.strokeStyle = "white";
         mctx.stroke();
     } else {
         mctx.fillStyle = "rgba(0, 255, 200, 0.2)";
         mctx.fill();
     }
 
-    mctx.strokeStyle = "white";
     for (let r = mscale_t * ring_gap;
          r < Math.sqrt(Math.pow(mcnvs.width/2, 2) + Math.pow(mcnvs.height/2, 2));
          r += mscale_t * ring_gap){
@@ -384,6 +393,16 @@ function minimap(){
         mctx.stroke();
     }
 }
+
+function disp_spds(){
+    ctx.fillStyle = "#fff";
+    ctx.font = "10px monospace";
+    ctx.textBaseline = "bottom";
+    ctx.textAlign = "left";
+    for (var i = 0; i < zombies.length; i++){
+        ctx.fillText(zombies[i].spd.toString(), time_p, cnvs.height-time_p-i*15);
+    }
+} 
 
 function disp_score(time){
     ctx.fillStyle = "#fff";
@@ -419,28 +438,40 @@ function am_i_dead(){
 
 function update_zombs(){
     zombies = zombies.map(function (z){
-        ///step and turn intervals
-        let si = zomb_spd * time_diff_s
-        let ti = zomb_turn_spd * time_diff_s;
+        ///step, acceleration and turn intervals
+        let si = time_diff_s * z.spd;
+        let ai = time_diff_s * zomb_acc;
+        let ti = time_diff_s * zomb_turn_spd;
         //angle to camera from y-axis
         let atc = zengine.to_deg(Math.atan2(cam.x - z.x, cam.y - z.y)); 
         //camera offset
         let co = atc - z.yaw;
         //remove overflows
         co += co < -180 ? 360 : co > 180 ? -360 : 0;
+        //facing towards player
         if (-ti < co && co < ti){
             return {x: z.x + si * Math.sin(zengine.to_rad(atc)),
                     y: z.y + si * Math.cos(zengine.to_rad(atc)), 
-                    z: z.z, yaw: atc};
+                    z: z.z, yaw: atc,
+                    spd: z.spd + ai > zomb_max_spd ? zomb_max_spd : z.spd + ai};
         } else {
+            //turn towards (i.e. no movement and no acceleration)
             return {x: z.x, y: z.y, z: z.z,
-                    yaw: z.yaw + ti * (co> 0 ? 1 : -1)};
+                    yaw: z.yaw + ti * (co> 0 ? 1 : -1),
+                    spd: z.spd};
         }
     });
 }
 
 function construct_world(){
-    let faces = [];
+    let faces = [
+    /*
+    {verts: [{x: -sqr_sz, y:  sqr_sz, z: 0}, {x: -sqr_sz, y:  sqr_sz, z: wall_ht}, {x:  sqr_sz, y:  sqr_sz, z: wall_ht}, {x:  sqr_sz, y:  sqr_sz, z: 0}], col: "#00f"},
+    {verts: [{x: -sqr_sz, y:  sqr_sz, z: 0}, {x: -sqr_sz, y:  sqr_sz, z: wall_ht}, {x: -sqr_sz, y: -sqr_sz, z: wall_ht}, {x: -sqr_sz, y: -sqr_sz, z: 0}], col: "#00f"},
+    {verts: [{x:  sqr_sz, y: -sqr_sz, z: 0}, {x:  sqr_sz, y: -sqr_sz, z: wall_ht}, {x:  sqr_sz, y:  sqr_sz, z: wall_ht}, {x: sqr_sz, y:  sqr_sz, z: 0}], col: "#00f"},
+    {verts: [{x: -sqr_sz, y: -sqr_sz, z: 0}, {x: -sqr_sz, y: -sqr_sz, z: wall_ht}, {x:  sqr_sz, y: -sqr_sz, z: wall_ht}, {x:  sqr_sz, y: -sqr_sz, z: 0}], col: "#00f"}
+    */
+    ];
     for (let i = 0; i < zombies.length; i++){
         let z = zombies[i];
         faces = faces.concat(zomb.map(f => ({verts: f.verts.map(zengine.z_axis_rotate(zengine.to_rad(-z.yaw)))
