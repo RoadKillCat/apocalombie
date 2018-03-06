@@ -61,9 +61,9 @@ var zomb_r = 4;
 
 /*******************scoring*************************/
 //score increase from killing a zomb
-var scr_incr = 1000;
-//duration of scr
-var scr_dur = 400;
+var scr_incr = 2000;
+//duration of score popup
+var scr_dur = 256;
 
 /********************player*************************/
 //starting (cam) position
@@ -409,10 +409,14 @@ function disp_score(time){
     ctx.font = "20px monospace";
     ctx.textBaseline = "top";
     ctx.textAlign = "left";
-    ctx.fillText(parseInt(time - time_start).toString(), time_p, time_p);
+    let t = parseInt(time - time_start).toString()
+    let w = ctx.measureText(t).width;
+    ctx.fillText(t, time_p, time_p);
+    ctx.font = "12px monospace";
     if (time - time_kill_ms < scr_dur){
-        ctx.fillStyle = "#fd5";
-        ctx.fillText("+"+scr_incr.toString(), time_p, time_p*2 + 20);
+        ctx.fillStyle = wireframe ? "#fff" : "#fd5";
+        ctx.textAlign = "right";
+        ctx.fillText("+"+scr_incr.toString(), time_p + w, time_p*2 + 20);
     }
 }    
 
