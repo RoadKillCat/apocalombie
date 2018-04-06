@@ -206,12 +206,6 @@ function handle_keys(tds){
             case ' ':
                 if (!jumping) jump();
                 break;
-/*            case 'z':
-                cam.z += 0.5;
-                break;
-            case 'x':
-                cam.z -= 0.5;
-                break;*/
         }
     }
 }
@@ -349,7 +343,6 @@ function in_scope(faces){
         {x: zengine.to_deg(Math.atan2(c.x - cam.x, c.y - cam.y)),
          y: zengine.to_deg(Math.atan2(c.z - cam.z, c.y - cam.y))
         }));
-        
         if (in_polygon({x: 0, y: 0}, face2d)) return true;
     }
     return false;
@@ -372,7 +365,6 @@ function minimap(){
             mctx.fill();
         }
     }
-    
     mctx.beginPath();
     mctx.moveTo(mcnvs.width/2, mcnvs.height/2);
     mctx.lineTo(mcnvs.width/2 + Math.sin(zengine.to_rad(cam.fov)/2) * mcnvs.height / 2, 0);
@@ -402,7 +394,7 @@ function disp_spds(){
     for (var i = 0; i < zombies.length; i++){
         ctx.fillText(zombies[i].spd.toString(), time_p, cnvs.height-time_p-i*15);
     }
-} 
+}
 
 function disp_score(time){
     ctx.fillStyle = "#fff";
@@ -418,7 +410,7 @@ function disp_score(time){
         ctx.textAlign = "right";
         ctx.fillText("+"+scr_incr.toString(), time_p + w, time_p*2 + 20);
     }
-}    
+}
 
 function disp_death(){
     ctx.fillStyle = "#f004";
@@ -433,9 +425,11 @@ function disp_death(){
 function am_i_dead(){
     for (let i = 0; i < zombies.length; i++){
         if (zengine.distance(cam, zombies[i]) < zomb_kill_dst){
+            //is now dead
             disp_death();
             document.exitPointerLock();
             dead = true;
+            new Audio('oof.mp3').play();
          }
     }
 }
@@ -468,14 +462,7 @@ function update_zombs(){
 }
 
 function construct_world(){
-    let faces = [
-    /*
-    {verts: [{x: -sqr_sz, y:  sqr_sz, z: 0}, {x: -sqr_sz, y:  sqr_sz, z: wall_ht}, {x:  sqr_sz, y:  sqr_sz, z: wall_ht}, {x:  sqr_sz, y:  sqr_sz, z: 0}], col: "#00f"},
-    {verts: [{x: -sqr_sz, y:  sqr_sz, z: 0}, {x: -sqr_sz, y:  sqr_sz, z: wall_ht}, {x: -sqr_sz, y: -sqr_sz, z: wall_ht}, {x: -sqr_sz, y: -sqr_sz, z: 0}], col: "#00f"},
-    {verts: [{x:  sqr_sz, y: -sqr_sz, z: 0}, {x:  sqr_sz, y: -sqr_sz, z: wall_ht}, {x:  sqr_sz, y:  sqr_sz, z: wall_ht}, {x: sqr_sz, y:  sqr_sz, z: 0}], col: "#00f"},
-    {verts: [{x: -sqr_sz, y: -sqr_sz, z: 0}, {x: -sqr_sz, y: -sqr_sz, z: wall_ht}, {x:  sqr_sz, y: -sqr_sz, z: wall_ht}, {x:  sqr_sz, y: -sqr_sz, z: 0}], col: "#00f"}
-    */
-    ];
+    let faces = [];
     for (let i = 0; i < zombies.length; i++){
         let z = zombies[i];
         faces = faces.concat(zomb.map(f => ({verts: f.verts.map(zengine.z_axis_rotate(zengine.to_rad(-z.yaw)))
