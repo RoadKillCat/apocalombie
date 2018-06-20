@@ -84,10 +84,12 @@ let jump_peak;
 //min and max spawn distances, in units, from player
 let min_spwn = 20;
 let max_spwn = 32;
-let zomb_kill_dst = 4;  //units *from feet*
-let zomb_start_spd = 2;       //units per second
-let zomb_max_spd = 8;
-let zomb_acc = 1;     //units per second ^ 2
+let zomb_kill_dst = 4;  //units from cam to zombie's feet
+let zomb_spd_start = 2; //units per second
+let zomb_spd_max   = 4;   //units per second
+let zomb_spd_incr  = 0.2; //every spawn increases max speed by this
+let zomb_acc = 1;       //units per second ^ 2
+
 let zomb_turn_spd = 60; //degrees per second
 
 //maximum alowed, otherwise rendering slows down a lot
@@ -96,28 +98,16 @@ let max_zombies = 32;
 //array to store coordinates of zombos
 let zombies = [];
 
-function new_zomb(){
-    let y = Math.random() * Math.PI * 2;
-    let d = min_spwn + Math.random() * (max_spwn - min_spwn);
-    zombies.push({
-        x: cam.x + Math.cos(y) * d,
-        y: cam.y + Math.sin(y) * d,
-        z: 0,
-        yaw: Math.random() * 360 - 180,
-        spd: zomb_start_spd
-    })
-}
-
-new_zomb();
-
-
 /*** STARTING FUNCTIONS ***/
 
 //scale canvas to screen size
 fts();
 //display start up screen
 startup();
+//spawn the first zombie
+spawn_zomb();
 
+//troll
 console.log('THINK WE CAM CHEAT, DO WE ?');
 console.log('p.s. jokes on you, ich habe diene IP');
 
@@ -243,8 +233,8 @@ function mc(e){
             in_scope(zomb.map(f => f.verts.map(zengine.z_axis_rotate(zengine.to_rad(-z.yaw)))
                                           .map(zengine.translate(z.x, z.y, z.z))))){
             zombies.splice(i, 1);
-            new_zomb();
-            if (zombies.length < max_zombies) new_zomb();
+            spawn_zomb();
+            if (zombies.length < max_zombies) spawn_zomb();
             time_kill_ms = performance.now();
             time_start -= scr_incr;
             break; //only one kill per shot!
@@ -451,7 +441,7 @@ function update_zombs(){
             return {x: z.x + si * Math.sin(zengine.to_rad(atc)),
                     y: z.y + si * Math.cos(zengine.to_rad(atc)), 
                     z: z.z, yaw: atc,
-                    spd: z.spd + ai > zomb_max_spd ? zomb_max_spd : z.spd + ai};
+                    spd: z.spd + ai > zomb_spd_max ? zomb_spd_max : z.spd + ai};
         } else {
             //turn towards (i.e. no movement and no acceleration)
             return {x: z.x, y: z.y, z: z.z,
@@ -502,4 +492,17 @@ function jump(){
     jump_peak = jump_rest + jump_height;
     //we're jumping
     jumping = true;
+}
+
+function spawn_zomb(){
+    let y = Math.random() * Math.PI * 2;
+    let d = min_spwn + Math.random() * (max_spwn - min_spwn);
+    zombies.push({
+        x: cam.x + Math.cos(y) * d,
+        y: cam.y + Math.sin(y) * d,
+        z: 0,
+        yaw: Math.random() * 360 - 180,
+        spd: zomb_spd_start
+    })
+    zomb_spd_max += zomb_spd_incr;
 }
