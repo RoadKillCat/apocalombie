@@ -1,4 +1,3 @@
-
 /* ZOMBIE */
 
 /*
@@ -11,35 +10,35 @@ key:
 */
 
 //head
-var hh = 0.4;
-var hw = 0.5;
-var ht = 0.8;
-var hn = 0.15;
-var hcb = "#e30";
-var hcs = "#f41";
+let hh = 0.4;
+let hw = 0.5;
+let ht = 0.8;
+let hn = 0.15;
+let hcb = "#e30";
+let hcs = "#f41";
 
 //torso
-var th = 1.7;
-var tw = 1;
-var tt = 0.3;
-var tcf = "#d98";
-var tcb = "#c65";
-var tcs = "#c54";
+let th = 1.7;
+let tw = 1;
+let tt = 0.3;
+let tcf = "#d98";
+let tcb = "#c65";
+let tcs = "#c54";
 
 //legs
-var lh = 2;
-var lw = 0.4;
-var lco = "#c54";
-var lci = "#a32";
+let lh = 2;
+let lw = 0.4;
+let lco = "#c54";
+let lci = "#a32";
 
 //arms
-var al = 1.5;
-var ah = 0.3;
-var aw = 0.25;
-var aco = "#d76";
-var aci = "#a32";
+let al = 1.5;
+let ah = 0.3;
+let aw = 0.25;
+let aco = "#d76";
+let aci = "#a32";
 
-var zomb = [
+let zomb = [
 //head
 {verts: [{x: 0,    y: 0, z: lh+th   }, {x: -hw/2, y: 0, z: lh+th+hh}, {x: hw/2, y: 0,  z: lh+th+hh}], col: hcb},
 {verts: [{x: 0,    y: 0, z: lh+th   }, {x:  hw/2, y: 0, z: lh+th+hh}, {x: 0,    y: ht, z: lh+th+hn}], col: hcs},
