@@ -65,7 +65,7 @@ let scr_dur = 256;
 //starting (cam) position
 let cam = {x: 0, y: 0, z: 3.5, yaw: 0, pitch: 0, roll: 0, fov: 50};
 //sensitivity of mouse movement
-let sens = 4;
+let sens = 8;
 //speed, units per second
 let spd = 12;
 //am dead?
@@ -243,9 +243,9 @@ function mc(e){
 }
 
 function mm(e){
-    cam.yaw += e.movementX * sens / 32;
+    cam.yaw += e.movementX * sens / 128;
     cam.yaw += cam.yaw < -180 ? 360 : cam.yaw > 180 ? -360 : 0;
-    cam.pitch -= e.movementY * sens / 32;
+    cam.pitch -= e.movementY * sens / 128;
     cam.pitch += cam.pitch < -180 ? 360 : cam.pitch > 180 ? -360 : 0;
 }
 
